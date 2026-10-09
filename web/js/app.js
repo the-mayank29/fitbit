@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * FITBIT 3D APPLICATION CONTROLLER
- * Full REST API integration, state management, modal forms & 3D HUD sync
+ * GOOGLE FIT MINIMAL CONTROLLER
+ * Full REST API integration, Material Design 3 rings, Journal feeds, FAB controls
  * ============================================================================
  */
 
@@ -16,23 +16,14 @@ class FitbitApp {
       sleep: [],
       cycle: null,
       profile: null,
-      activeTab: 'overview'
+      activeTab: 'home'
     };
 
-    this.engine3d = null;
-    this.selectedSymptoms = new Set();
-
+    this.isFabOpen = false;
     this.init();
   }
 
   async init() {
-    // Initialize 3D Engine
-    try {
-      this.engine3d = new Engine3D('canvas3d');
-    } catch (e) {
-      console.error("Could not init 3D engine:", e);
-    }
-
     this.bindEvents();
     await this.refreshAll();
   }
@@ -62,13 +53,9 @@ class FitbitApp {
       this.state.profile = dashRes.profile;
 
       this.renderAll();
-
-      if (this.engine3d) {
-        this.engine3d.updateMetrics(this.state.dashboard);
-      }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
-      this.showToast("Server connection error. Retrying...", "error");
+      this.showToast("Connection issue with server", "error");
     }
   }
 
@@ -77,51 +64,10 @@ class FitbitApp {
   // ==========================================
   bindEvents() {
     // Tab switching
-    document.querySelectorAll('.nav-tab').forEach(tab => {
+    document.querySelectorAll('.gf-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const target = tab.dataset.tab;
         this.switchTab(target);
-      });
-    });
-
-    // 3D Mode switching
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const mode = btn.dataset.mode;
-        if (this.engine3d) {
-          this.engine3d.setMode(mode);
-        }
-      });
-    });
-
-    // 3D Controls
-    document.querySelectorAll('.ctrl-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const action = btn.dataset.action;
-        if (!this.engine3d) return;
-
-        if (action === 'autorotate') {
-          const active = this.engine3d.toggleAutoRotate();
-          btn.classList.toggle('active', active);
-        } else {
-          this.engine3d.setPreset(action);
-        }
-      });
-    });
-
-    // Symptom pills selector in cycle modal
-    document.querySelectorAll('.symptom-tag').forEach(tag => {
-      tag.addEventListener('click', () => {
-        const val = tag.dataset.symptom;
-        if (this.selectedSymptoms.has(val)) {
-          this.selectedSymptoms.delete(val);
-          tag.classList.remove('selected');
-        } else {
-          this.selectedSymptoms.add(val);
-          tag.classList.add('selected');
-        }
       });
     });
 
@@ -135,43 +81,38 @@ class FitbitApp {
     document.getElementById('formProfile')?.addEventListener('submit', (e) => this.handleProfileSubmit(e));
   }
 
+  toggleFab() {
+    this.isFabOpen = !this.isFabOpen;
+    const menu = document.getElementById('fabMenu');
+    const btn = document.getElementById('fabBtn');
+    if (menu) menu.classList.toggle('active', this.isFabOpen);
+    if (btn) btn.classList.toggle('active', this.isFabOpen);
+  }
+
   switchTab(tabId) {
     this.state.activeTab = tabId;
-    document.querySelectorAll('.nav-tab').forEach(t => {
+    document.querySelectorAll('.gf-tab').forEach(t => {
       t.classList.toggle('active', t.dataset.tab === tabId);
     });
     document.querySelectorAll('.view-section').forEach(sec => {
       sec.classList.toggle('active', sec.id === `view-${tabId}`);
     });
 
-    // Automatically switch 3D stage mode to match selected tab for amazing visual continuity!
-    if (this.engine3d) {
-      if (tabId === 'activities') this.set3DMode('rings');
-      else if (tabId === 'measurements') this.set3DMode('body');
-      else if (tabId === 'vitals') this.set3DMode('heart');
-      else if (tabId === 'sleep') this.set3DMode('sleep');
-      else if (tabId === 'cycle') this.set3DMode('cycle');
-    }
+    // Close FAB if open
+    if (this.isFabOpen) this.toggleFab();
 
-    // Refresh charts on tab switch
+    // Re-render charts on tab change
     setTimeout(() => this.renderCharts(), 50);
   }
 
-  set3DMode(mode) {
-    document.querySelectorAll('.mode-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.mode === mode);
-    });
-    if (this.engine3d) this.engine3d.setMode(mode);
-  }
-
   // ==========================================
-  // RENDERING ALL MODULES
+  // RENDERING
   // ==========================================
   renderAll() {
     this.renderHeader();
-    this.renderOverview();
-    this.renderActivities();
-    this.renderMeasurements();
+    this.renderHome();
+    this.renderJournal();
+    this.renderBody();
     this.renderVitals();
     this.renderNutrition();
     this.renderSleep();
@@ -181,107 +122,134 @@ class FitbitApp {
 
   renderHeader() {
     const prof = this.state.profile;
-    const dash = this.state.dashboard;
-    if (prof) {
+    if (prof && prof.name) {
       document.getElementById('userNameBadge').innerText = prof.name;
-    }
-    if (dash && dash.wellnessScore !== undefined) {
-      document.getElementById('wellnessScoreVal').innerText = `${dash.wellnessScore}/100`;
+      document.getElementById('avatarInitial').innerText = prof.name.charAt(0).toUpperCase();
     }
   }
 
-  renderOverview() {
+  renderHome() {
     const d = this.state.dashboard;
     if (!d) return;
 
-    // Steps
     const stepGoal = (d.profile && d.profile.dailyStepGoal) || 10000;
     const steps = d.todaySteps || 0;
-    document.getElementById('cardTodaySteps').innerText = steps.toLocaleString();
-    document.getElementById('cardStepGoal').innerText = `Goal: ${stepGoal.toLocaleString()}`;
-    const stepPct = Math.min(100, Math.round((steps / stepGoal) * 100));
-    document.getElementById('cardStepProgress').style.width = `${stepPct}%`;
-
-    // Calories
-    const calGoal = (d.profile && d.profile.dailyCalorieGoal) || 600;
     const cals = d.todayCaloriesBurned || 0;
-    document.getElementById('cardTodayCals').innerText = `${cals} kcal`;
-    document.getElementById('cardCalGoal').innerText = `Goal: ${calGoal} kcal`;
-    const calPct = Math.min(100, Math.round((cals / calGoal) * 100));
-    document.getElementById('cardCalProgress').style.width = `${calPct}%`;
+    const mins = Math.round(d.todayActiveMinutes || 0);
 
-    // Latest Vitals
+    // Calculate distance (km) based on steps or activities
+    let distKm = 0;
+    this.state.activities.forEach(a => { distKm += a.distanceKm || 0; });
+    if (distKm === 0 && steps > 0) distKm = Math.round((steps * 0.00075) * 10) / 10;
+
+    // Heart Points calculation (e.g. 1 pt per active min)
+    const heartPts = Math.min(100, Math.round(mins * 1.2));
+
+    // Update Hero Ring text
+    document.getElementById('heroSteps').innerText = steps.toLocaleString();
+    document.getElementById('heroHeartPts').innerText = `${heartPts} Heart Pts`;
+    document.getElementById('heroCalories').innerText = cals.toLocaleString();
+    document.getElementById('heroActiveMins').innerText = mins;
+    document.getElementById('heroDistance').innerText = distKm.toFixed(1);
+
+    // Animate Concentric SVG Rings
+    // Steps Ring: circumference = 2 * PI * 66 = 414.69
+    const stepCirc = 414.69;
+    const stepRatio = Math.min(1.0, steps / stepGoal);
+    const ringSteps = document.getElementById('ringSteps');
+    if (ringSteps) {
+      ringSteps.style.strokeDashoffset = stepCirc * (1 - stepRatio);
+    }
+
+    // Heart Points Ring: circumference = 2 * PI * 48 = 301.59
+    const heartCirc = 301.59;
+    const heartGoal = 50;
+    const heartRatio = Math.min(1.0, heartPts / heartGoal);
+    const ringHeart = document.getElementById('ringHeart');
+    if (ringHeart) {
+      ringHeart.style.strokeDashoffset = heartCirc * (1 - heartRatio);
+    }
+
+    // Vitals Highlight Card
     if (d.latestVital) {
-      document.getElementById('cardHeartRate').innerText = `${d.latestVital.heartRateBpm} BPM`;
-      document.getElementById('cardBloodPressure').innerText = `${d.latestVital.systolicBp}/${d.latestVital.diastolicBp} mmHg`;
-      document.getElementById('cardSpO2').innerText = `${d.latestVital.spO2Percent}%`;
+      const v = d.latestVital;
+      document.getElementById('homeHeartRate').innerText = `${v.heartRateBpm} BPM`;
+      document.getElementById('homeBpSub').innerText = `Blood pressure: ${v.systolicBp}/${v.diastolicBp} mmHg`;
+      document.getElementById('homeVitalCategory').innerText = v.bpCategory || 'Optimal';
+      document.getElementById('homeVitalExtra').innerText =
+        `Resting: ${v.restingHeartRateBpm || '--'} BPM • SpO2: ${v.spO2Percent}% • Temp: ${v.bodyTempC}°C`;
     }
 
-    // Sleep
+    // Body Measurements Highlight Card
+    if (d.latestMeasurement) {
+      const m = d.latestMeasurement;
+      document.getElementById('homeWeight').innerText = `${m.weightKg} kg`;
+      document.getElementById('homeBmiSub').innerText = `BMI: ${m.bmi} (${m.bmiCategory}) • Body fat: ${m.bodyFatPercent || '--'}%`;
+      document.getElementById('homeBmiBadge').innerText = m.bmiCategory || 'Normal';
+      document.getElementById('homeMeasurementsSub').innerText =
+        `Waist: ${m.waistCm || '--'} cm • Hips: ${m.hipsCm || '--'} cm • WHR: ${m.waistToHipRatio || '--'}`;
+    }
+
+    // Sleep Highlight Card
     if (d.latestSleep) {
-      document.getElementById('cardSleepScore').innerText = `${d.latestSleep.sleepScore}/100`;
-      const hrs = Math.floor(d.latestSleep.totalMinutes / 60);
-      const mins = d.latestSleep.totalMinutes % 60;
-      document.getElementById('cardSleepDuration').innerText = `${hrs}h ${mins}m (${d.latestSleep.quality})`;
+      const s = d.latestSleep;
+      const hrs = Math.floor(s.totalMinutes / 60);
+      const minsRem = s.totalMinutes % 60;
+      document.getElementById('homeSleepDuration').innerText = `${hrs} hr ${minsRem} min`;
+      document.getElementById('homeSleepScore').innerText = `Score ${s.sleepScore}`;
+      document.getElementById('homeSleepSub').innerText = `Deep sleep: ${s.deepMinutes}m • REM: ${s.remMinutes}m (${s.quality})`;
     }
 
-    // Cycle Status
-    if (d.cycleStatus) {
-      document.getElementById('cardCyclePhase').innerText = `Day ${d.cycleStatus.currentCycleDay} • ${d.cycleStatus.currentPhase}`;
-      document.getElementById('cardCycleFertile').innerText = d.cycleStatus.isFertileWindow ? "✨ Fertile Window" : "Low Fertility";
-      document.getElementById('cardCycleNext').innerText = `Next period in ${d.cycleStatus.daysUntilNextPeriod} days`;
-    }
-
-    // Nutrition & Hydration
+    // Nutrition & Hydration Highlight Card
     if (d.todayNutrition) {
-      document.getElementById('cardNutrCals').innerText = `${d.todayNutrition.calories} kcal`;
-      document.getElementById('cardWaterIntake').innerText = `${d.todayNutrition.waterMl} ml`;
-      const waterGoal = (d.profile && d.profile.dailyWaterGoalMl) || 2500;
-      const waterPct = Math.min(100, Math.round((d.todayNutrition.waterMl / waterGoal) * 100));
-      document.getElementById('cardWaterProgress').style.width = `${waterPct}%`;
+      const n = d.todayNutrition;
+      document.getElementById('homeNutrCals').innerText = `${n.calories} kcal`;
+      document.getElementById('homeNutrMacros').innerText = `Protein: ${n.protein}g • Carbs: ${n.carbs}g • Fat: ${n.fat}g`;
+      document.getElementById('homeWaterVal').innerText = `${n.waterMl} ml`;
     }
 
-    // 3D HUD Sync
-    document.getElementById('hudSteps').innerText = steps.toLocaleString();
-    document.getElementById('hudBpm').innerText = d.latestVital ? `${d.latestVital.heartRateBpm} BPM` : '68 BPM';
-    document.getElementById('hudWeight').innerText = d.latestMeasurement ? `${d.latestMeasurement.weightKg} kg` : '62.4 kg';
-    document.getElementById('hudCycle').innerText = d.cycleStatus ? `Day ${d.cycleStatus.currentCycleDay}` : 'Day 11';
+    // Cycle Highlight Card
+    if (d.cycleStatus) {
+      const c = d.cycleStatus;
+      document.getElementById('homeCycleDay').innerText = `Day ${c.currentCycleDay}`;
+      document.getElementById('homeCyclePhaseBadge').innerText = c.currentPhase;
+      document.getElementById('homeCycleSub').innerText = `Next period in ${c.daysUntilNextPeriod} days`;
+      document.getElementById('homeFertileAlert').innerText = c.isFertileWindow ? "✨ Fertile window is open" : "Low fertility phase";
+    }
   }
 
-  renderActivities() {
+  renderJournal() {
     const list = this.state.activities;
     const tbody = document.getElementById('activitiesTableBody');
     if (!tbody) return;
 
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">No activities logged yet. Click "+ Log Workout" to add one.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#5f6368;">No workouts recorded yet. Tap "+ Log workout" to begin.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = list.map(a => `
       <tr>
         <td><strong>${escapeHtml(a.name)}</strong></td>
-        <td><span class="badge badge-info">${escapeHtml(a.type)}</span></td>
-        <td>${a.durationMinutes} mins</td>
+        <td><span class="gf-badge gf-badge-blue">${escapeHtml(a.type)}</span></td>
+        <td>${a.durationMinutes} min</td>
         <td>${a.distanceKm > 0 ? a.distanceKm + ' km' : '—'}</td>
-        <td><span style="color:var(--accent-rose); font-weight:700;">${a.caloriesBurned} kcal</span></td>
-        <td><span class="badge ${a.intensity === 'HIGH' || a.intensity === 'EXTREME' ? 'badge-warning' : 'badge-normal'}">${a.intensity || 'MODERATE'}</span></td>
-        <td>
-          <button class="action-btn" title="Delete" onclick="window.app.deleteActivity('${a.id}')">
-            🗑
-          </button>
+        <td style="color:var(--gf-red); font-weight:700;">${a.caloriesBurned} kcal</td>
+        <td><span class="gf-badge ${a.intensity === 'HIGH' || a.intensity === 'EXTREME' ? 'gf-badge-red' : 'gf-badge-green'}">${a.intensity || 'MODERATE'}</span></td>
+        <td style="text-align:right;">
+          <button class="gf-delete-btn" title="Delete" onclick="window.app.deleteActivity('${a.id}')">✕</button>
         </td>
       </tr>
     `).join('');
   }
 
-  renderMeasurements() {
+  renderBody() {
     const list = this.state.measurements;
     const tbody = document.getElementById('measurementsTableBody');
     if (!tbody) return;
 
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748b;">No measurements recorded yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:#5f6368;">No body measurements recorded.</td></tr>`;
       return;
     }
 
@@ -290,23 +258,22 @@ class FitbitApp {
         <td>${m.timestamp}</td>
         <td><strong>${m.weightKg} kg</strong></td>
         <td>${m.heightCm} cm</td>
-        <td><span class="badge ${m.bmiCategory === 'NORMAL' ? 'badge-normal' : 'badge-elevated'}">${m.bmi} (${m.bmiCategory})</span></td>
+        <td><span class="gf-badge ${m.bmiCategory === 'NORMAL' ? 'gf-badge-green' : 'gf-badge-yellow'}">${m.bmi} (${m.bmiCategory})</span></td>
         <td>${m.bodyFatPercent ? m.bodyFatPercent + '%' : '—'}</td>
         <td>${m.waistCm ? m.waistCm + ' cm' : '—'}</td>
         <td>${m.hipsCm ? m.hipsCm + ' cm' : '—'}</td>
-        <td>
-          <button class="action-btn" onclick="window.app.deleteMeasurement('${m.id}')">🗑</button>
+        <td style="text-align:right;">
+          <button class="gf-delete-btn" onclick="window.app.deleteMeasurement('${m.id}')">✕</button>
         </td>
       </tr>
     `).join('');
 
-    // Update highlight cards
     if (list.length > 0) {
-      const latest = list[0];
-      document.getElementById('bmLatestWeight').innerText = `${latest.weightKg} kg`;
-      document.getElementById('bmLatestBmi').innerText = `${latest.bmi} (${latest.bmiCategory})`;
-      document.getElementById('bmLatestFat').innerText = latest.bodyFatPercent ? `${latest.bodyFatPercent}%` : '—';
-      document.getElementById('bmLatestWhr').innerText = latest.waistToHipRatio ? latest.waistToHipRatio : '—';
+      const top = list[0];
+      document.getElementById('bmWeightCard').innerText = `${top.weightKg} kg`;
+      document.getElementById('bmBmiCard').innerText = `${top.bmi}`;
+      document.getElementById('bmFatCard').innerText = top.bodyFatPercent ? `${top.bodyFatPercent}%` : '—';
+      document.getElementById('bmWhrCard').innerText = top.waistToHipRatio ? `${top.waistToHipRatio}` : '—';
     }
   }
 
@@ -316,20 +283,20 @@ class FitbitApp {
     if (!tbody) return;
 
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">No vitals recorded yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#5f6368;">No vitals recorded yet.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = list.map(v => `
       <tr>
         <td>${v.timestamp ? v.timestamp.replace('T', ' ').substring(0, 16) : '—'}</td>
-        <td><span style="color:var(--accent-rose); font-weight:700;">${v.heartRateBpm} BPM</span></td>
+        <td style="font-weight:700; color:var(--gf-green);">${v.heartRateBpm} BPM</td>
         <td>${v.restingHeartRateBpm ? v.restingHeartRateBpm + ' BPM' : '—'}</td>
-        <td><span class="badge ${v.bpCategory === 'NORMAL' ? 'badge-normal' : 'badge-warning'}">${v.systolicBp}/${v.diastolicBp}</span></td>
+        <td><span class="gf-badge ${v.bpCategory === 'NORMAL' ? 'gf-badge-green' : 'gf-badge-red'}">${v.systolicBp}/${v.diastolicBp} mmHg</span></td>
         <td>${v.spO2Percent}%</td>
         <td>${v.bloodGlucoseMgDl ? v.bloodGlucoseMgDl + ' mg/dL' : '—'}</td>
-        <td>
-          <button class="action-btn" onclick="window.app.deleteVital('${v.id}')">🗑</button>
+        <td style="text-align:right;">
+          <button class="gf-delete-btn" onclick="window.app.deleteVital('${v.id}')">✕</button>
         </td>
       </tr>
     `).join('');
@@ -341,20 +308,20 @@ class FitbitApp {
     if (!tbody) return;
 
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">No meals logged today.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#5f6368;">No meals logged today.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = list.map(n => `
       <tr>
-        <td><span class="badge badge-purple">${n.mealType}</span></td>
+        <td><span class="gf-badge gf-badge-purple">${n.mealType}</span></td>
         <td><strong>${escapeHtml(n.foodName)}</strong></td>
         <td>${n.calories} kcal</td>
         <td>${n.proteinGrams}g</td>
         <td>${n.carbsGrams}g</td>
         <td>${n.fatGrams}g</td>
-        <td>
-          <button class="action-btn" onclick="window.app.deleteNutrition('${n.id}')">🗑</button>
+        <td style="text-align:right;">
+          <button class="gf-delete-btn" onclick="window.app.deleteNutrition('${n.id}')">✕</button>
         </td>
       </tr>
     `).join('');
@@ -366,7 +333,7 @@ class FitbitApp {
     if (!tbody) return;
 
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">No sleep sessions logged.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:#5f6368;">No sleep logs recorded.</td></tr>`;
       return;
     }
 
@@ -374,12 +341,13 @@ class FitbitApp {
       <tr>
         <td>${s.sleepStart ? s.sleepStart.substring(0, 10) : '—'}</td>
         <td>${Math.floor(s.totalMinutes / 60)}h ${s.totalMinutes % 60}m</td>
-        <td><span class="badge ${s.sleepScore >= 80 ? 'badge-normal' : 'badge-elevated'}">${s.sleepScore} (${s.quality})</span></td>
-        <td>${s.deepMinutes}m (${Math.round((s.deepMinutes/s.totalMinutes)*100)}%)</td>
-        <td>${s.remMinutes}m (${Math.round((s.remMinutes/s.totalMinutes)*100)}%)</td>
+        <td><span class="gf-badge ${s.sleepScore >= 80 ? 'gf-badge-green' : 'gf-badge-yellow'}">${s.sleepScore}</span></td>
+        <td>${s.deepMinutes}m</td>
+        <td>${s.lightMinutes}m</td>
+        <td>${s.remMinutes}m</td>
         <td>${s.efficiencyPercent}%</td>
-        <td>
-          <button class="action-btn" onclick="window.app.deleteSleep('${s.id}')">🗑</button>
+        <td style="text-align:right;">
+          <button class="gf-delete-btn" onclick="window.app.deleteSleep('${s.id}')">✕</button>
         </td>
       </tr>
     `).join('');
@@ -395,29 +363,23 @@ class FitbitApp {
     if (!cyc || !cyc.status) return;
 
     const st = cyc.status;
-    document.getElementById('cycleCurrentDay').innerText = `Day ${st.currentCycleDay}`;
-    document.getElementById('cyclePhaseName').innerText = st.phaseDescription;
-    document.getElementById('cycleFocusAdvice').innerText = st.recommendedFocus;
-    document.getElementById('cycleFertilityStatus').innerText = st.isFertileWindow ? "✨ High Fertility Window" : "Low Fertility";
-    document.getElementById('cycleNextPeriodDays').innerText = `${st.daysUntilNextPeriod} Days`;
+    document.getElementById('cycleStatusBadge').innerText = st.currentPhase;
+    document.getElementById('cycleDayHeadline').innerText = `Day ${st.currentCycleDay} • ${st.phaseDescription}`;
+    document.getElementById('cycleAdviceHeadline').innerText = st.recommendedFocus;
+    document.getElementById('cycleDaysToNext').innerText = `${st.daysUntilNextPeriod} Days`;
 
-    const phaseTag = document.getElementById('cyclePhasePill');
-    phaseTag.className = `phase-pill phase-${st.currentPhase.toLowerCase()}`;
-    phaseTag.innerText = st.currentPhase;
-
-    // Render cycle logs table
     const tbody = document.getElementById('cycleTableBody');
     if (tbody && cyc.logs) {
       tbody.innerHTML = cyc.logs.map(c => `
         <tr>
           <td>${c.logDate}</td>
           <td>Day ${c.cycleDay}</td>
-          <td><span class="badge badge-purple">${c.phase}</span></td>
-          <td>${c.flow || 'NONE'}</td>
+          <td><span class="gf-badge gf-badge-purple">${c.phase}</span></td>
+          <td>${c.flow || 'None'}</td>
           <td>${c.symptoms && c.symptoms.length ? c.symptoms.join(', ') : '—'}</td>
           <td>${c.mood || '—'}</td>
-          <td>
-            <button class="action-btn" onclick="window.app.deleteCycleLog('${c.id}')">🗑</button>
+          <td style="text-align:right;">
+            <button class="gf-delete-btn" onclick="window.app.deleteCycleLog('${c.id}')">✕</button>
           </td>
         </tr>
       `).join('');
@@ -425,25 +387,25 @@ class FitbitApp {
   }
 
   renderCharts() {
-    // 1. Steps Bar Chart (from activities)
-    const recentActs = [...this.state.activities].slice(0, 6).reverse();
+    // Weekly Steps Bar Chart
+    const recentActs = [...this.state.activities].slice(0, 7).reverse();
     const actLabels = recentActs.map(a => a.name.split(' ')[0]);
     const actSteps = recentActs.map(a => a.steps || (a.caloriesBurned * 12));
     if (actSteps.length > 0) {
-      Charts.drawBarChart('canvasStepsChart', actLabels, actSteps, '#00f2fe');
+      Charts.drawBarChart('canvasStepsChart', actLabels, actSteps, '#1a73e8');
     }
 
-    // 2. Weight Progress Line Chart
+    // Weight Progress Line Chart
     const recentBm = [...this.state.measurements].slice(0, 7).reverse();
     const bmLabels = recentBm.map(m => m.timestamp.substring(5));
     const bmWeights = recentBm.map(m => m.weightKg);
     if (bmWeights.length > 0) {
-      Charts.drawLineChart('canvasWeightChart', bmLabels, bmWeights, '#10b981');
+      Charts.drawLineChart('canvasWeightChart', bmLabels, bmWeights, '#00875a');
     }
   }
 
   // ==========================================
-  // MODAL CONTROLS & FORM SUBMISSION
+  // MODALS & QUICK ACTIONS
   // ==========================================
   openModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -455,35 +417,28 @@ class FitbitApp {
     if (modal) modal.classList.remove('active');
   }
 
-  openMeasurementModal(part) {
-    this.openModal('modalMeasurement');
-    if (part) {
-      document.getElementById('inputMeasNotes').value = `Inspected 3D ${part.toUpperCase()}`;
-    }
-  }
-
   async quickAddWater(amountMl) {
     try {
       const payload = {
         mealType: "WATER",
-        foodName: `Hydration Refill (${amountMl}ml)`,
+        foodName: `Hydration (${amountMl}ml)`,
         calories: 0,
         proteinGrams: 0,
         carbsGrams: 0,
         fatGrams: 0,
         fiberGrams: 0,
         waterMl: amountMl,
-        notes: "Quick Hydration Tracker"
+        notes: "Quick Water Add"
       };
       await fetch('/api/nutrition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      this.showToast(`+${amountMl}ml logged! Keep hydrating! 💧`, "success");
+      this.showToast(`+${amountMl}ml added to water intake`);
       await this.refreshAll();
     } catch (e) {
-      this.showToast("Failed to log water", "error");
+      this.showToast("Could not record water", "error");
     }
   }
 
@@ -511,7 +466,7 @@ class FitbitApp {
     if (res.ok) {
       this.closeModal('modalActivity');
       form.reset();
-      this.showToast("Workout activity logged! 🏃‍♂️", "success");
+      this.showToast("Workout added to Journal");
       await this.refreshAll();
     }
   }
@@ -541,7 +496,7 @@ class FitbitApp {
     if (res.ok) {
       this.closeModal('modalMeasurement');
       form.reset();
-      this.showToast("Body measurements & 3D avatar updated! 📐", "success");
+      this.showToast("Body metrics updated");
       await this.refreshAll();
     }
   }
@@ -556,8 +511,7 @@ class FitbitApp {
       diastolicBp: parseInt(form.vitDiastolic.value) || 0,
       spO2Percent: parseFloat(form.vitSpO2.value) || 0,
       bloodGlucoseMgDl: parseFloat(form.vitGlucose.value) || 0,
-      bodyTempC: parseFloat(form.vitTemp.value) || 0,
-      notes: form.vitNotes.value
+      bodyTempC: parseFloat(form.vitTemp.value) || 0
     };
 
     const res = await fetch('/api/vitals', {
@@ -569,7 +523,7 @@ class FitbitApp {
     if (res.ok) {
       this.closeModal('modalVital');
       form.reset();
-      this.showToast("Vitals saved & 3D heart synced! ❤️", "success");
+      this.showToast("Vitals saved");
       await this.refreshAll();
     }
   }
@@ -584,9 +538,7 @@ class FitbitApp {
       proteinGrams: parseFloat(form.nutrProtein.value) || 0,
       carbsGrams: parseFloat(form.nutrCarbs.value) || 0,
       fatGrams: parseFloat(form.nutrFat.value) || 0,
-      fiberGrams: parseFloat(form.nutrFiber.value) || 0,
-      waterMl: parseInt(form.nutrWater.value) || 0,
-      notes: form.nutrNotes.value
+      waterMl: parseInt(form.nutrWater.value) || 0
     };
 
     const res = await fetch('/api/nutrition', {
@@ -598,7 +550,7 @@ class FitbitApp {
     if (res.ok) {
       this.closeModal('modalNutrition');
       form.reset();
-      this.showToast("Meal and nutrition saved! 🥗", "success");
+      this.showToast("Meal recorded");
       await this.refreshAll();
     }
   }
@@ -612,8 +564,7 @@ class FitbitApp {
       deepMinutes: parseInt(form.slpDeep.value) || 0,
       lightMinutes: parseInt(form.slpLight.value) || 0,
       remMinutes: parseInt(form.slpRem.value) || 0,
-      awakeMinutes: parseInt(form.slpAwake.value) || 0,
-      notes: form.slpNotes.value
+      awakeMinutes: parseInt(form.slpAwake.value) || 0
     };
 
     const res = await fetch('/api/sleep', {
@@ -625,7 +576,7 @@ class FitbitApp {
     if (res.ok) {
       this.closeModal('modalSleep');
       form.reset();
-      this.showToast("Sleep session saved & score calculated! 🛌", "success");
+      this.showToast("Sleep session saved");
       await this.refreshAll();
     }
   }
@@ -638,9 +589,7 @@ class FitbitApp {
       cycleDay: parseInt(form.cycDay.value),
       flow: form.cycFlow.value,
       mood: form.cycMood.value,
-      basalBodyTempC: parseFloat(form.cycTemp.value) || 0,
-      notes: form.cycNotes.value,
-      symptoms: Array.from(this.selectedSymptoms)
+      basalBodyTempC: parseFloat(form.cycTemp.value) || 0
     };
 
     const res = await fetch('/api/cycle', {
@@ -652,9 +601,7 @@ class FitbitApp {
     if (res.ok) {
       this.closeModal('modalCycle');
       form.reset();
-      this.selectedSymptoms.clear();
-      document.querySelectorAll('.symptom-tag').forEach(t => t.classList.remove('selected'));
-      this.showToast("Cycle entry logged & ovulation updated! 🌸", "success");
+      this.showToast("Cycle entry recorded");
       await this.refreshAll();
     }
   }
@@ -670,9 +617,7 @@ class FitbitApp {
       targetWeightKg: parseFloat(form.profWeight.value),
       dailyStepGoal: parseInt(form.profSteps.value),
       dailyCalorieGoal: parseInt(form.profCalories.value),
-      dailyWaterGoalMl: parseInt(form.profWater.value),
-      cycleLengthDays: parseInt(form.profCycleLength.value),
-      periodLengthDays: parseInt(form.profPeriodLength.value)
+      dailyWaterGoalMl: parseInt(form.profWater.value)
     };
 
     const res = await fetch('/api/profile', {
@@ -683,42 +628,40 @@ class FitbitApp {
 
     if (res.ok) {
       this.closeModal('modalProfile');
-      this.showToast("Profile & fitness goals updated! 🎯", "success");
+      this.showToast("Profile updated");
       await this.refreshAll();
     }
   }
 
-  // ==========================================
-  // DELETION & RESET HANDLERS
-  // ==========================================
+  // Deletions
   async deleteActivity(id) {
-    if (confirm("Delete this activity?")) {
+    if (confirm("Delete this workout?")) {
       await fetch(`/api/activities?id=${id}`, { method: 'DELETE' });
-      this.showToast("Activity removed", "info");
+      this.showToast("Workout deleted");
       await this.refreshAll();
     }
   }
 
   async deleteMeasurement(id) {
-    if (confirm("Delete this body measurement?")) {
+    if (confirm("Delete this measurement?")) {
       await fetch(`/api/measurements?id=${id}`, { method: 'DELETE' });
-      this.showToast("Measurement removed", "info");
+      this.showToast("Measurement deleted");
       await this.refreshAll();
     }
   }
 
   async deleteVital(id) {
-    if (confirm("Delete this vitals log?")) {
+    if (confirm("Delete this vitals record?")) {
       await fetch(`/api/vitals?id=${id}`, { method: 'DELETE' });
-      this.showToast("Vitals log removed", "info");
+      this.showToast("Vitals record deleted");
       await this.refreshAll();
     }
   }
 
   async deleteNutrition(id) {
-    if (confirm("Delete this meal entry?")) {
+    if (confirm("Delete this meal?")) {
       await fetch(`/api/nutrition?id=${id}`, { method: 'DELETE' });
-      this.showToast("Meal removed", "info");
+      this.showToast("Meal deleted");
       await this.refreshAll();
     }
   }
@@ -726,7 +669,7 @@ class FitbitApp {
   async deleteSleep(id) {
     if (confirm("Delete this sleep record?")) {
       await fetch(`/api/sleep?id=${id}`, { method: 'DELETE' });
-      this.showToast("Sleep record removed", "info");
+      this.showToast("Sleep record deleted");
       await this.refreshAll();
     }
   }
@@ -734,15 +677,7 @@ class FitbitApp {
   async deleteCycleLog(id) {
     if (confirm("Delete this cycle log?")) {
       await fetch(`/api/cycle?id=${id}`, { method: 'DELETE' });
-      this.showToast("Cycle log removed", "info");
-      await this.refreshAll();
-    }
-  }
-
-  async resetDemoData() {
-    if (confirm("Reset application to fresh demo sample data?")) {
-      await fetch('/api/reset-demo', { method: 'POST' });
-      this.showToast("Demo data reloaded! ✨", "success");
+      this.showToast("Cycle record deleted");
       await this.refreshAll();
     }
   }
@@ -756,8 +691,8 @@ class FitbitApp {
     container.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
-      setTimeout(() => toast.remove(), 300);
-    }, 3500);
+      setTimeout(() => toast.remove(), 250);
+    }, 2800);
   }
 }
 

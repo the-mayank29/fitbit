@@ -1,25 +1,25 @@
-# ⚡ Review 1 Presentation: FITBIT 3D Health & Fitness Application
+# ⚡ Review 1 Presentation: FITBIT Health & Fitness Application
 
-> **Project Title:** FITBIT 3D - Next-Generation Health & Biometric Tracking Platform  
+> **Project Title:** FITBIT - Minimal Health & Biometric Tracking Platform (Google Fit Style)  
 > **Course / Review:** Java GUI Based Projects — Review 1 Evaluation  
-> **Tech Stack:** Java 21 LTS, SQLite 3 / JDBC, WebGL 3D, Virtual Threads  
+> **Tech Stack:** Java 21 LTS, SQLite 3 / JDBC, Google Fit Material Design 3, Virtual Threads  
 
 ---
 
 ## 📑 Slide Deck Outline & Speaker Script
 
 ### Slide 1: Title & Introduction
-* **Headline:** FITBIT 3D - Next-Generation Health & Biometric Tracking Platform
+* **Headline:** FITBIT - Minimal Health & Biometric Tracking Platform
 * **Presenter:** Student Project Team
-* **Review Focus:** Project Structure, Database Design, Database Connectivity, OOP Architecture, Collections & Generics, and UI/UX Responsiveness.
+* **Review Focus:** Project Structure, Database Design, Database Connectivity, OOP Architecture, Collections & Generics, and Minimal UI/UX.
 * **Speaker Script:**  
-  *"Good morning reviewers. Today, we present Review 1 of our project, Fitbit 3D. Our vision is to combine clinical-grade health tracking with immersive 3D WebGL biometrics, engineered cleanly on Java 21 with relational database persistence."*
+  *"Good morning reviewers. Today, we present Review 1 of our project, Fitbit. Our goal is to provide a clean, minimal health tracking experience inspired by Google Fit, built on a robust Java 21 backend with SQLite relational persistence."*
 
 ---
 
 ### Slide 2: Project Scope & Core Modules
 * **Domain Modules Covered:**
-  1. **🏃 Activities:** Workouts (Running, Cycling, Strength, HIIT, Yoga) tracking duration, distance, calories, and HR zones.
+  1. **🏃 Activities:** Workouts (Running, Cycling, Strength, HIIT, Yoga) tracking duration, distance, calories, and Heart Points.
   2. **📐 Body Measurements:** Weight, Height, Body Fat %, Muscle Mass, tape circumferences with BMI & Waist-to-Hip ratio calculation.
   3. **💓 Vitals:** Heart rate BPM, resting HR, blood pressure with AHA clinical classification, SpO2, blood glucose, and temperature.
   4. **🥗 Nutrition & Hydration:** Meals, macronutrients (protein, carbs, fat), and interactive water intake counter.
@@ -44,7 +44,7 @@ fitbit/
 ├── data/
 │   ├── schema.sql     # Relational 3NF SQL DDL
 │   └── fitbit.db      # SQLite Database
-├── web/               # Responsive 3D WebGL UI
+├── web/               # Google Fit Minimal UI (HTML5/CSS3/JS)
 └── presentation/      # Review 1 Slide Deck & Docs
 ```
 
@@ -231,14 +231,13 @@ erDiagram
 
 ---
 
-### Slide 10: UI/UX Design & 3D Interactive WebGL Engine
-* **Interactive 3D Modes:**
-  1. 🧍 **3D Anatomical Body Avatar:** Real-time morphing reflecting user weight/measurements with interactive click raycasting.
-  2. ❤️ **3D Beating Heart:** Rhythmic systolic/diastolic contractions synced to the user's BPM.
-  3. ⭕ **3D Activity Rings:** Glowing concentric rings for steps, calories, and duration.
-  4. 🌙 **3D Sleep Orb:** Celestial geosphere displaying sleep architecture stages.
-  5. 🌸 **3D Cycle Disc:** 28-day rotating lunar disc with fertile window indicator.
-* **Aesthetics:** Cyber-biometric dark mode, glassmorphism, responsive across desktop and mobile.
+### Slide 10: UI/UX Design — Google Fit Minimal Material Design
+* **Design Principles:**
+  - **Concentric Activity Rings:** Outer Blue Ring (`#1a73e8`) for Move Minutes & Steps; Inner Green Ring (`#00875a`) for Heart Points.
+  - **Material Design 3 Palette:** Clean cards, generous padding, subtle elevation, and Google's signature color coding.
+  - **Speed-Dial Floating Action Button (FAB):** Quick one-tap logging for activities, weight, vitals, meals, sleep, and cycle logs.
+  - **Clean Journal Feed:** Chronological cards for workouts and health logs with zero visual clutter.
+* **Performance & Accessibility:** Lightweight, responsive across mobile, tablet, and desktop without WebGL overhead.
 
 ---
 
@@ -252,4 +251,4 @@ erDiagram
 | **Collections & Generics** | **6 Marks** | `Repository<T, ID>`, `GenericRepository`, `ConcurrentHashMap`, Streams |
 | **Database Design** | Core Req | 7 Normalized 3NF tables in SQLite with Foreign Keys & Indexes |
 | **Database Connectivity** | Core Req | JDBC `DbConnectionFactory`, Singleton Pattern, `PreparedStatement` |
-| **UI/UX Aesthetics & Responsiveness** | Core Req | Responsive Glassmorphism + 5 Interactive 3D WebGL scenes |
+| **UI/UX Aesthetics & Responsiveness** | Core Req | Google Fit Minimal UI with Concentric Activity Rings & FAB |

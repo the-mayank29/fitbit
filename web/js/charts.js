@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * FITBIT CHARTS - Lightweight Canvas Charting Engine
- * Zero dependencies, pixel-perfect crisp retina display
+ * GOOGLE FIT CHARTS - Minimal Retina Canvas Charts
+ * Clean, minimal, crisp typography and material colors
  * ============================================================================
  */
 
@@ -18,44 +18,39 @@ const Charts = {
     return { ctx, width: rect.width, height: rect.height };
   },
 
-  drawBarChart(canvasId, labels, values, color = '#00f2fe') {
+  drawBarChart(canvasId, labels, values, color = '#1a73e8') {
     const setup = this.setupCanvas(canvasId);
     if (!setup) return;
     const { ctx, width, height } = setup;
 
     ctx.clearRect(0, 0, width, height);
 
-    const padBottom = 26;
+    const padBottom = 24;
     const padTop = 16;
-    const padSide = 20;
+    const padSide = 16;
     const chartHeight = height - padBottom - padTop;
     const maxVal = Math.max(...values, 1000) * 1.15;
-    const barWidth = Math.min(36, (width - padSide * 2) / values.length - 12);
+    const barWidth = Math.min(32, (width - padSide * 2) / values.length - 10);
 
     values.forEach((val, i) => {
       const x = padSide + i * ((width - padSide * 2) / values.length) + 6;
       const barH = (val / maxVal) * chartHeight;
       const y = height - padBottom - barH;
 
-      // Draw rounded bar
-      const grad = ctx.createLinearGradient(0, y, 0, height - padBottom);
-      grad.addColorStop(0, color);
-      grad.addColorStop(1, 'rgba(0, 242, 254, 0.2)');
-
-      ctx.fillStyle = grad;
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.roundRect(x, y, barWidth, barH, [6, 6, 0, 0]);
+      ctx.roundRect(x, y, barWidth, barH, [4, 4, 0, 0]);
       ctx.fill();
 
-      // Value label
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '10px -apple-system, sans-serif';
+      // Label
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '11px -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(labels[i], x + barWidth / 2, height - 8);
+      ctx.fillText(labels[i], x + barWidth / 2, height - 6);
     });
   },
 
-  drawLineChart(canvasId, labels, values, strokeColor = '#10b981') {
+  drawLineChart(canvasId, labels, values, strokeColor = '#00875a') {
     const setup = this.setupCanvas(canvasId);
     if (!setup) return;
     const { ctx, width, height } = setup;
@@ -63,7 +58,7 @@ const Charts = {
     ctx.clearRect(0, 0, width, height);
     if (values.length === 0) return;
 
-    const pad = 28;
+    const pad = 24;
     const chartWidth = width - pad * 2;
     const chartHeight = height - pad * 2;
 
@@ -77,10 +72,10 @@ const Charts = {
       return { x, y, val };
     });
 
-    // Draw gradient area under line
+    // Subtle area
     const areaGrad = ctx.createLinearGradient(0, pad, 0, height - pad);
-    areaGrad.addColorStop(0, strokeColor + '44');
-    areaGrad.addColorStop(1, strokeColor + '00');
+    areaGrad.addColorStop(0, 'rgba(0, 135, 90, 0.12)');
+    areaGrad.addColorStop(1, 'rgba(0, 135, 90, 0.0)');
 
     ctx.beginPath();
     ctx.moveTo(pts[0].x, height - pad);
@@ -90,21 +85,21 @@ const Charts = {
     ctx.fillStyle = areaGrad;
     ctx.fill();
 
-    // Draw Line
+    // Line
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) {
       ctx.lineTo(pts[i].x, pts[i].y);
     }
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke();
 
-    // Draw dots
+    // Data points
     pts.forEach((p, idx) => {
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -112,11 +107,10 @@ const Charts = {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Label
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '10px -apple-system, sans-serif';
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '11px -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(labels[idx] || '', p.x, height - 8);
+      ctx.fillText(labels[idx] || '', p.x, height - 6);
     });
   },
 
@@ -131,16 +125,16 @@ const Charts = {
     if (total === 0) return;
 
     const stages = [
-      { name: 'Deep', val: deepMin, color: '#38bdf8' },
-      { name: 'Light', val: lightMin, color: '#818cf8' },
-      { name: 'REM', val: remMin, color: '#c084fc' },
-      { name: 'Awake', val: awakeMin, color: '#fb7185' }
+      { name: 'Deep', val: deepMin, color: '#1a73e8' },
+      { name: 'Light', val: lightMin, color: '#8ab4f8' },
+      { name: 'REM', val: remMin, color: '#9334e6' },
+      { name: 'Awake', val: awakeMin, color: '#f28b82' }
     ];
 
-    let startX = 14;
-    const barWidth = width - 28;
-    const barHeight = 24;
-    const y = 30;
+    let startX = 12;
+    const barWidth = width - 24;
+    const barHeight = 20;
+    const y = 14;
 
     stages.forEach(st => {
       const segW = (st.val / total) * barWidth;
@@ -152,15 +146,15 @@ const Charts = {
     });
 
     // Legend
-    let legendX = 14;
+    let legendX = 12;
     stages.forEach(st => {
       ctx.fillStyle = st.color;
-      ctx.fillRect(legendX, y + 36, 10, 10);
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(legendX, y + 28, 8, 8);
+      ctx.fillStyle = '#5f6368';
       ctx.font = '11px -apple-system, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(`${st.name}: ${st.val}m (${Math.round((st.val / total) * 100)}%)`, legendX + 16, y + 45);
-      legendX += 135;
+      ctx.fillText(`${st.name}: ${st.val}m`, legendX + 12, y + 36);
+      legendX += 120;
     });
   }
 };

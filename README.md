@@ -1,11 +1,11 @@
-# ⚡ FITBIT 3D - Next-Gen Health & Biometric Suite
+# ⚡ FITBIT - Minimal Health & Biometric Suite (Google Fit Style)
 
 [![Java](https://img.shields.io/badge/Java-21%20LTS-orange.svg)](https://www.oracle.com/java/)
 [![Database](https://img.shields.io/badge/Database-SQLite%203%20%2F%20JDBC-blue.svg)](https://www.sqlite.org/)
-[![UI](https://img.shields.io/badge/UI-WebGL%203D%20Interactive-cyan.svg)](web/index.html)
+[![UI](https://img.shields.io/badge/UI-Google%20Fit%20Material%203-blue.svg)](web/index.html)
 [![Evaluation](https://img.shields.io/badge/Review%201-100%25%20Rubric%20Compliant-success.svg)](presentation/Review1_Presentation.html)
 
-A modular, full-stack fitness and biometric tracker engineered on **Java 21**, featuring an interactive **3D WebGL Biometric Visualization Engine**, normalized **SQLite 3 Relational Database**, and full compliance with the **Java GUI Project Marking Rubric**.
+A clean, modular health and fitness tracker inspired by **Google Fit**, built on **Java 21**, featuring **Material Design 3 Concentric Activity Rings**, **SQLite 3 Relational Persistence**, and full compliance with the **Java GUI Project Marking Rubric**.
 
 ---
 
@@ -13,14 +13,29 @@ A modular, full-stack fitness and biometric tracker engineered on **Java 21**, f
 
 | Rubric Component | Marks | Project Implementation | Key Files |
 |---|---|---|---|
-| **OOP: Inheritance** | **10 Marks** (Combined) | Multi-level inheritance: `BaseEntity` (abstract) &rarr; `HealthMetric` (abstract) &rarr; `Activity`, `Vital`, `BodyMeasurement`, `NutritionLog`, `SleepSession`, `CycleLog` | [`BaseEntity.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/model/BaseEntity.java)<br>[`HealthMetric.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/model/HealthMetric.java) |
+| **OOP: Inheritance** | **10 Marks** (Combined) | Multi-level hierarchy: `BaseEntity` (abstract) &rarr; `HealthMetric` (abstract) &rarr; `Activity`, `Vital`, `BodyMeasurement`, `NutritionLog`, `SleepSession`, `CycleLog` | [`BaseEntity.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/model/BaseEntity.java)<br>[`HealthMetric.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/model/HealthMetric.java) |
 | **OOP: Polymorphism** | | Dynamic runtime method dispatch using `Trackable` interface, overridden `validate()`, `getSummary()`, `getPrimaryMetricValue()` | [`Trackable.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/model/Trackable.java)<br>[`Activity.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/model/Activity.java) |
 | **OOP: Interfaces** | | Interface contracts for tracking metrics (`Trackable`) and generic persistence (`Repository<T, ID>`) | [`Trackable.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/model/Trackable.java)<br>[`Repository.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/repository/Repository.java) |
 | **OOP: Exception Handling** | | Custom domain exception hierarchy: `FitnessException` (base) &rarr; `ValidationException`, `EntityNotFoundException`, `DatabaseException` with error codes | [`FitnessException.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/exception/FitnessException.java)<br>[`ValidationException.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/exception/ValidationException.java) |
 | **Collections & Generics** | **6 Marks** | Type-safe Generic Repository `Repository<T extends BaseEntity, ID>`, `GenericRepository` with `ConcurrentHashMap`, `ArrayList`, Streams API, and Predicate filtering | [`Repository.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/repository/Repository.java)<br>[`GenericRepository.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/repository/GenericRepository.java) |
 | **Database Design** | Core Req | 7 Normalized (3NF) relational tables with Foreign Keys, Check Constraints, and Performance Indexes in SQLite | [`schema.sql`](file:///Users/mayank/Downloads/fitbit/data/schema.sql)<br>[`fitbit.db`](file:///Users/mayank/Downloads/fitbit/data/fitbit.db) |
 | **Database Connectivity** | Core Req | JDBC connection management using Singleton Pattern (`DbConnectionFactory`), `PreparedStatement`, and resource management | [`DbConnectionFactory.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/db/DbConnectionFactory.java)<br>[`DatabaseManager.java`](file:///Users/mayank/Downloads/fitbit/src/fitbit/db/DatabaseManager.java) |
-| **UI/UX Aesthetics & Responsiveness** | Core Req | Responsive Cyber-Biometric Dark UI + 5 Interactive WebGL 3D Visualization Modes (Body Avatar, Heart, Rings, Orb, Disc) | [`index.html`](file:///Users/mayank/Downloads/fitbit/web/index.html)<br>[`engine3d.js`](file:///Users/mayank/Downloads/fitbit/web/js/engine3d.js) |
+| **UI/UX Aesthetics & Responsiveness** | Core Req | Google Fit Minimal Material Design 3 UI: Concentric Move & Heart Points Activity Rings, Journal Feed, and Speed-Dial FAB | [`index.html`](file:///Users/mayank/Downloads/fitbit/web/index.html)<br>[`style.css`](file:///Users/mayank/Downloads/fitbit/web/css/style.css) |
+
+---
+
+## 🌟 Google Fit Minimal UI Features
+
+1. **Iconic Concentric Activity Rings**:
+   - **Outer Blue Ring (`#1a73e8`)**: Move Minutes & Steps progress toward your daily target.
+   - **Inner Green Ring (`#00875a`)**: Heart Points earned from moderate-to-vigorous activities.
+   - Real-time ring circumference stroke-dashoffset animation.
+2. **Speed-Dial Floating Action Button (FAB)**:
+   - One-touch logging for Workouts, Body measurements, Vitals, Nutrition, Sleep, and Cycle.
+3. **Clean Journal Feed**:
+   - Chronological, uncluttered history of workouts and metrics with instant delete and filter options.
+4. **Minimal Health Metric Cards**:
+   - Vitals (Heart rate, Blood Pressure, SpO2), Body weight & BMI, Sleep hypnogram, Nutrition & Hydration (+250ml tap), and Cycle tracking.
 
 ---
 
@@ -153,16 +168,16 @@ classDiagram
 
 ## 🚀 How to Run the Project
 
-### Option 1: One-Click Launch Script
+### One-Click Launch Script
 ```bash
 cd /Users/mayank/Downloads/fitbit
 ./run.sh
 ```
-* Compiles all Java files.
+* Compiles all Java source files.
 * Starts the web server on `http://localhost:8080`.
 * Automatically launches your web browser.
 
-### Option 2: Run Review 1 Verification Tests
+### Run Review 1 Verification Tests
 ```bash
 java -ea -cp bin fitbit.test.TestRunner
 ```
@@ -178,16 +193,14 @@ You have two presentation formats prepared in the `presentation/` directory:
      ```bash
      open presentation/Review1_Presentation.html
      ```
-   - Features keyboard arrow navigation (<kbd>&larr;</kbd> / <kbd>&rarr;</kbd>).
-   - Click **"🖨️ Export PDF / Print"** (or press <kbd>Cmd</kbd> + <kbd>P</kbd>) to save as a submission-ready PDF file!
-2. **Markdown Presentation Document (`presentation/Review1_Presentation.md`):**
-   - Contains slide content, speaker script, bullet points, and diagram definitions.
+   - Navigate slides using <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> arrow keys.
+   - Click **"🖨️ Export PDF / Print"** (or press <kbd>Cmd</kbd> + <kbd>P</kbd>) to save as a clean PDF file!
+2. **Markdown Presentation Document ([`Review1_Presentation.md`](file:///Users/mayank/Downloads/fitbit/presentation/Review1_Presentation.md)):**
+   - Contains slide speaker notes, bullet points, and diagram definitions.
 
 ---
 
 ## 🐙 How to Push to GitHub (For Review 1 Submission)
-
-Run these commands in your terminal:
 
 ```bash
 cd /Users/mayank/Downloads/fitbit
@@ -195,12 +208,11 @@ cd /Users/mayank/Downloads/fitbit
 # 1. Add all files to git
 git add .
 
-# 2. Create the Review 1 commit
-git commit -m "Complete Review 1: Project structure, Database design, JDBC connectivity, OOP architecture, and 3D UI"
+# 2. Commit the changes
+git commit -m "feat: switch to Google Fit minimal UI with concentric activity rings"
 
-# 3. Create a new public repository on GitHub (e.g. named fitbit-3d)
-# Then link your repository and push:
+# 3. Link your GitHub repository and push
 git branch -M main
-git remote add origin https://github.com/<YOUR_GITHUB_USERNAME>/fitbit-3d.git
+git remote add origin https://github.com/<YOUR_GITHUB_USERNAME>/fitbit.git
 git push -u origin main
 ```
