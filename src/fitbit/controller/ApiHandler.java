@@ -41,23 +41,86 @@ public class ApiHandler implements HttpHandler {
 
         try {
             Map<String, String> queryParams = parseQueryParams(uri.getQuery());
+            String targetUser = queryParams.getOrDefault("userId", dataStore.getActiveUser().getId());
 
             switch (path) {
+                // ==========================================
+                // MULTI-USER MANAGEMENT ENDPOINTS
+                // ==========================================
+                case "/api/users" -> {
+                    if ("GET".equalsIgnoreCase(method)) {
+                        Map<String, Object> resp = new LinkedHashMap<>();
+                        resp.put("activeUserId", dataStore.getActiveUser().getId());
+                        resp.put("users", dataStore.getAllUsers());
+                        sendJsonResponse(exchange, 200, resp);
+                    } else if ("POST".equalsIgnoreCase(method)) {
+                        String body = readBody(exchange);
+                        Map<String, Object> m = JsonUtil.parseObject(body);
+                        UserProfile u = new UserProfile();
+                        if (m.containsKey("id")) u.setId((String) m.get("id"));
+                        if (m.containsKey("name")) u.setName((String) m.get("name"));
+                        if (m.containsKey("email")) u.setEmail((String) m.get("email"));
+                        if (m.containsKey("avatarColor")) u.setAvatarColor((String) m.get("avatarColor"));
+                        if (m.containsKey("age")) u.setAge(((Number) m.get("age")).intValue());
+                        if (m.containsKey("gender")) u.setGender((String) m.get("gender"));
+                        if (m.containsKey("heightCm")) u.setHeightCm(((Number) m.get("heightCm")).doubleValue());
+                        if (m.containsKey("targetWeightKg")) u.setTargetWeightKg(((Number) m.get("targetWeightKg")).doubleValue());
+                        if (m.containsKey("dailyStepGoal")) u.setDailyStepGoal(((Number) m.get("dailyStepGoal")).intValue());
+                        if (m.containsKey("dailyCalorieGoal")) u.setDailyCalorieGoal(((Number) m.get("dailyCalorieGoal")).intValue());
+                        if (m.containsKey("dailyWaterGoalMl")) u.setDailyWaterGoalMl(((Number) m.get("dailyWaterGoalMl")).intValue());
+                        UserProfile created = dataStore.createUser(u);
+                        sendJsonResponse(exchange, 201, created);
+                    } else if ("DELETE".equalsIgnoreCase(method)) {
+                        String id = queryParams.get("id");
+                        if (id != null && dataStore.deleteUser(id)) {
+                            sendJsonResponse(exchange, 200, Map.of("success", true, "message", "User deleted"));
+                        } else {
+                            sendJsonResponse(exchange, 400, Map.of("error", "Cannot delete user (minimum 1 user required)"));
+                        }
+                    } else {
+                        sendResponse(exchange, 405, "Method Not Allowed");
+                    }
+                }
+                case "/api/users/switch" -> {
+                    if ("POST".equalsIgnoreCase(method)) {
+                        String id = queryParams.get("id");
+                        if (id == null) {
+                            String body = readBody(exchange);
+                            Map<String, Object> m = JsonUtil.parseObject(body);
+                            id = (String) m.get("id");
+                        }
+                        if (id != null && dataStore.setActiveUserId(id)) {
+                            sendJsonResponse(exchange, 200, Map.of("success", true, "activeUser", dataStore.getActiveUser()));
+                        } else {
+                            sendJsonResponse(exchange, 404, Map.of("error", "User ID not found"));
+                        }
+                    } else {
+                        sendResponse(exchange, 405, "Method Not Allowed");
+                    }
+                }
+
+                // ==========================================
+                // DASHBOARD & USER DATA ENDPOINTS
+                // ==========================================
                 case "/api/dashboard" -> {
                     if ("GET".equalsIgnoreCase(method)) {
-                        sendJsonResponse(exchange, 200, dataStore.getDashboardSummary());
+                        sendJsonResponse(exchange, 200, dataStore.getDashboardSummaryForUser(targetUser));
                     } else {
                         sendResponse(exchange, 405, "Method Not Allowed");
                     }
                 }
                 case "/api/profile" -> {
                     if ("GET".equalsIgnoreCase(method)) {
-                        sendJsonResponse(exchange, 200, dataStore.getProfile());
+                        sendJsonResponse(exchange, 200, dataStore.getUser(targetUser));
                     } else if ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
                         String body = readBody(exchange);
                         Map<String, Object> map = JsonUtil.parseObject(body);
-                        UserProfile current = dataStore.getProfile();
+                        UserProfile current = dataStore.getUser(targetUser);
+                        if (current == null) current = dataStore.getActiveUser();
+
                         if (map.containsKey("name")) current.setName((String) map.get("name"));
+                        if (map.containsKey("email")) current.setEmail((String) map.get("email"));
+                        if (map.containsKey("avatarColor")) current.setAvatarColor((String) map.get("avatarColor"));
                         if (map.containsKey("age")) current.setAge(((Number) map.get("age")).intValue());
                         if (map.containsKey("gender")) current.setGender((String) map.get("gender"));
                         if (map.containsKey("heightCm")) current.setHeightCm(((Number) map.get("heightCm")).doubleValue());
@@ -68,7 +131,7 @@ public class ApiHandler implements HttpHandler {
                         if (map.containsKey("sleepTargetHours")) current.setSleepTargetHours(((Number) map.get("sleepTargetHours")).doubleValue());
                         if (map.containsKey("cycleLengthDays")) current.setCycleLengthDays(((Number) map.get("cycleLengthDays")).intValue());
                         if (map.containsKey("periodLengthDays")) current.setPeriodLengthDays(((Number) map.get("periodLengthDays")).intValue());
-                        dataStore.updateProfile(current);
+                        dataStore.updateUser(current);
                         sendJsonResponse(exchange, 200, current);
                     } else {
                         sendResponse(exchange, 405, "Method Not Allowed");
@@ -76,11 +139,12 @@ public class ApiHandler implements HttpHandler {
                 }
                 case "/api/activities" -> {
                     if ("GET".equalsIgnoreCase(method)) {
-                        sendJsonResponse(exchange, 200, dataStore.getActivities());
+                        sendJsonResponse(exchange, 200, dataStore.getActivitiesForUser(targetUser));
                     } else if ("POST".equalsIgnoreCase(method)) {
                         String body = readBody(exchange);
                         Map<String, Object> m = JsonUtil.parseObject(body);
                         Activity a = new Activity();
+                        a.setUserId(m.containsKey("userId") ? (String) m.get("userId") : targetUser);
                         if (m.containsKey("name")) a.setName((String) m.get("name"));
                         if (m.containsKey("type")) a.setType((String) m.get("type"));
                         if (m.containsKey("timestamp")) {
@@ -110,11 +174,12 @@ public class ApiHandler implements HttpHandler {
                 }
                 case "/api/measurements" -> {
                     if ("GET".equalsIgnoreCase(method)) {
-                        sendJsonResponse(exchange, 200, dataStore.getMeasurements());
+                        sendJsonResponse(exchange, 200, dataStore.getMeasurementsForUser(targetUser));
                     } else if ("POST".equalsIgnoreCase(method)) {
                         String body = readBody(exchange);
                         Map<String, Object> m = JsonUtil.parseObject(body);
                         BodyMeasurement b = new BodyMeasurement();
+                        b.setUserId(m.containsKey("userId") ? (String) m.get("userId") : targetUser);
                         b.setTimestamp(m.containsKey("timestamp") ? (String) m.get("timestamp") : LocalDate.now().toString());
                         if (m.containsKey("weightKg")) b.setWeightKg(((Number) m.get("weightKg")).doubleValue());
                         if (m.containsKey("heightCm")) b.setHeightCm(((Number) m.get("heightCm")).doubleValue());
@@ -142,11 +207,12 @@ public class ApiHandler implements HttpHandler {
                 }
                 case "/api/vitals" -> {
                     if ("GET".equalsIgnoreCase(method)) {
-                        sendJsonResponse(exchange, 200, dataStore.getVitals());
+                        sendJsonResponse(exchange, 200, dataStore.getVitalsForUser(targetUser));
                     } else if ("POST".equalsIgnoreCase(method)) {
                         String body = readBody(exchange);
                         Map<String, Object> m = JsonUtil.parseObject(body);
                         Vital v = new Vital();
+                        v.setUserId(m.containsKey("userId") ? (String) m.get("userId") : targetUser);
                         v.setTimestamp(m.containsKey("timestamp") ? (String) m.get("timestamp") : LocalDateTime.now().toString());
                         if (m.containsKey("heartRateBpm")) v.setHeartRateBpm(((Number) m.get("heartRateBpm")).intValue());
                         if (m.containsKey("restingHeartRateBpm")) v.setRestingHeartRateBpm(((Number) m.get("restingHeartRateBpm")).intValue());
@@ -172,11 +238,12 @@ public class ApiHandler implements HttpHandler {
                 }
                 case "/api/nutrition" -> {
                     if ("GET".equalsIgnoreCase(method)) {
-                        sendJsonResponse(exchange, 200, dataStore.getNutritionLogs());
+                        sendJsonResponse(exchange, 200, dataStore.getNutritionLogsForUser(targetUser));
                     } else if ("POST".equalsIgnoreCase(method)) {
                         String body = readBody(exchange);
                         Map<String, Object> m = JsonUtil.parseObject(body);
                         NutritionLog n = new NutritionLog();
+                        n.setUserId(m.containsKey("userId") ? (String) m.get("userId") : targetUser);
                         n.setTimestamp(m.containsKey("timestamp") ? (String) m.get("timestamp") : LocalDateTime.now().toString());
                         if (m.containsKey("mealType")) n.setMealType((String) m.get("mealType"));
                         if (m.containsKey("foodName")) n.setFoodName((String) m.get("foodName"));
@@ -202,11 +269,12 @@ public class ApiHandler implements HttpHandler {
                 }
                 case "/api/sleep" -> {
                     if ("GET".equalsIgnoreCase(method)) {
-                        sendJsonResponse(exchange, 200, dataStore.getSleepSessions());
+                        sendJsonResponse(exchange, 200, dataStore.getSleepSessionsForUser(targetUser));
                     } else if ("POST".equalsIgnoreCase(method)) {
                         String body = readBody(exchange);
                         Map<String, Object> m = JsonUtil.parseObject(body);
                         SleepSession s = new SleepSession();
+                        s.setUserId(m.containsKey("userId") ? (String) m.get("userId") : targetUser);
                         if (m.containsKey("sleepStart")) s.setSleepStart((String) m.get("sleepStart"));
                         if (m.containsKey("sleepEnd")) s.setSleepEnd((String) m.get("sleepEnd"));
                         if (m.containsKey("deepMinutes")) s.setDeepMinutes(((Number) m.get("deepMinutes")).intValue());
@@ -231,19 +299,27 @@ public class ApiHandler implements HttpHandler {
                 case "/api/cycle" -> {
                     if ("GET".equalsIgnoreCase(method)) {
                         Map<String, Object> response = new LinkedHashMap<>();
-                        response.put("logs", dataStore.getCycleLogs());
+                        UserProfile up = dataStore.getUser(targetUser);
+                        if (up == null) up = dataStore.getActiveUser();
+                        List<CycleLog> logs = dataStore.getCycleLogsForUser(up.getId());
+                        response.put("logs", logs);
                         LocalDate anchor = LocalDate.now().minusDays(10);
-                        if (!dataStore.getCycleLogs().isEmpty() && dataStore.getCycleLogs().get(0).getCycleStartDate() != null) {
+                        if (!logs.isEmpty() && logs.get(0).getCycleStartDate() != null) {
                             try {
-                                anchor = LocalDate.parse(dataStore.getCycleLogs().get(0).getCycleStartDate());
+                                anchor = LocalDate.parse(logs.get(0).getCycleStartDate());
                             } catch (Exception ignored) {}
                         }
-                        response.put("status", CyclePredictor.evaluateCycle(anchor, dataStore.getProfile()));
+                        if ("FEMALE".equalsIgnoreCase(up.getGender())) {
+                            response.put("status", CyclePredictor.evaluateCycle(anchor, up));
+                        } else {
+                            response.put("status", null);
+                        }
                         sendJsonResponse(exchange, 200, response);
                     } else if ("POST".equalsIgnoreCase(method)) {
                         String body = readBody(exchange);
                         Map<String, Object> m = JsonUtil.parseObject(body);
                         CycleLog c = new CycleLog();
+                        c.setUserId(m.containsKey("userId") ? (String) m.get("userId") : targetUser);
                         c.setLogDate(m.containsKey("logDate") ? (String) m.get("logDate") : LocalDate.now().toString());
                         c.setCycleStartDate(m.containsKey("cycleStartDate") ? (String) m.get("cycleStartDate") : c.getLogDate());
                         if (m.containsKey("cycleDay")) c.setCycleDay(((Number) m.get("cycleDay")).intValue());
@@ -258,9 +334,10 @@ public class ApiHandler implements HttpHandler {
                             for (Object o : symList) if (o != null) list.add(o.toString());
                             c.setSymptoms(list);
                         }
-                        // Update predictions based on profile
+                        UserProfile up = dataStore.getUser(c.getUserId());
+                        if (up == null) up = dataStore.getActiveUser();
                         LocalDate cycleStart = LocalDate.parse(c.getCycleStartDate());
-                        var evaluated = CyclePredictor.evaluateCycle(cycleStart, dataStore.getProfile());
+                        var evaluated = CyclePredictor.evaluateCycle(cycleStart, up);
                         c.setPredictedNextPeriod(evaluated.nextPeriodDate().toString());
                         c.setPredictedOvulationDate(evaluated.nextOvulationDate().toString());
                         c.setFertileWindow(evaluated.isFertileWindow());
@@ -283,7 +360,7 @@ public class ApiHandler implements HttpHandler {
                     if ("POST".equalsIgnoreCase(method)) {
                         dataStore.seedDemoData();
                         dataStore.saveToFile();
-                        sendJsonResponse(exchange, 200, Map.of("success", true, "message", "Demo data reset successfully"));
+                        sendJsonResponse(exchange, 200, Map.of("success", true, "message", "Multi-user demo data reset successfully"));
                     } else {
                         sendResponse(exchange, 405, "Method Not Allowed");
                     }

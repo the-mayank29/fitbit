@@ -165,6 +165,61 @@ public class TestRunner {
             failed++;
         }
 
+        // -------------------------------------------------------------
+        // SECTION 5: MULTI-USER DATABASE & PROFILE ISOLATION
+        // -------------------------------------------------------------
+        System.out.println("\n[SECTION 5: MULTI-USER DATA SEGREGATION & PROFILES]");
+
+        try {
+            DataStore ds = new DataStore();
+            List<UserProfile> allUsers = ds.getAllUsers();
+            assert allUsers.size() >= 3 : "Expected at least 3 seeded users, found " + allUsers.size();
+
+            // Verify User Profiles
+            UserProfile u1 = ds.getUser("user_1");
+            UserProfile u2 = ds.getUser("user_2");
+            assert u1 != null && "Alex Morgan".equals(u1.getName()) : "user_1 name mismatch";
+            assert u2 != null && "David Chen".equals(u2.getName()) : "user_2 name mismatch";
+
+            // Verify User Isolation for Activities
+            List<Activity> u1Acts = ds.getActivitiesForUser("user_1");
+            List<Activity> u2Acts = ds.getActivitiesForUser("user_2");
+            assert !u1Acts.isEmpty() : "user_1 activities should not be empty";
+            assert !u2Acts.isEmpty() : "user_2 activities should not be empty";
+            for (Activity a : u1Acts) {
+                assert "user_1".equals(a.getUserId()) : "Data leakage: user_1 has activity for " + a.getUserId();
+            }
+            for (Activity a : u2Acts) {
+                assert "user_2".equals(a.getUserId()) : "Data leakage: user_2 has activity for " + a.getUserId();
+            }
+
+            // Verify User Switching
+            boolean switched = ds.setActiveUserId("user_2");
+            assert switched : "Failed to switch active user to user_2";
+            assert "user_2".equals(ds.getActiveUser().getId()) : "Active user is not user_2";
+
+            // Verify Adding New User & Data Isolation
+            UserProfile newUser = new UserProfile("user_test", "Test Runner", "test@fitbit.app", "#d93025", 26, "OTHER", 175.0, 68.0, 9000, 500, 2200, 8.0, 0, 0);
+            ds.createUser(newUser);
+            assert ds.getUser("user_test") != null : "Created user not found";
+            assert ds.getActivitiesForUser("user_test").isEmpty() : "New user should initially have 0 activities";
+
+            Activity testAct = new Activity("user_test", "Test Jog", "RUNNING", LocalDate.now().toString() + "T10:00:00", 25.0, 3.5, 220, 3500, 135, "MODERATE", "Isolated test activity");
+            ds.addActivity(testAct);
+            assert ds.getActivitiesForUser("user_test").size() == 1 : "Activity not isolated to user_test";
+            assert ds.getActivitiesForUser("user_1").stream().noneMatch(a -> a.getId().equals(testAct.getId())) : "Activity leaked into user_1";
+
+            // Clean up test user
+            ds.deleteUser("user_test");
+            ds.setActiveUserId("user_1");
+
+            System.out.println(" [✔] Test 5.1: Multi-user architecture & strict data isolation verified");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(" [✖] Test 5.1 failed: " + t.getMessage());
+            failed++;
+        }
+
         System.out.println("\n===============================================================");
         System.out.println(" SUMMARY: " + passed + " passed, " + failed + " failed.");
         System.out.println(" ALL REVIEW 1 RUBRIC REQUIREMENTS FULLY SATISFIED!");

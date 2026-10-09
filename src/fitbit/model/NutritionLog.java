@@ -5,6 +5,7 @@ import fitbit.exception.ValidationException;
 /**
  * NutritionLog entity for food, macros, and hydration.
  * Extends HealthMetric (Inheritance & Polymorphism).
+ * Supports multi-user isolation.
  */
 public class NutritionLog extends HealthMetric {
     private String mealType; // BREAKFAST, LUNCH, DINNER, SNACK, WATER
@@ -27,6 +28,20 @@ public class NutritionLog extends HealthMetric {
                         double proteinGrams, double carbsGrams, double fatGrams, double fiberGrams,
                         int waterMl, String notes) {
         super(timestamp, notes);
+        this.mealType = mealType;
+        this.foodName = foodName;
+        this.calories = calories;
+        this.proteinGrams = proteinGrams;
+        this.carbsGrams = carbsGrams;
+        this.fatGrams = fatGrams;
+        this.fiberGrams = fiberGrams;
+        this.waterMl = waterMl;
+    }
+
+    public NutritionLog(String userId, String timestamp, String mealType, String foodName, int calories,
+                        double proteinGrams, double carbsGrams, double fatGrams, double fiberGrams,
+                        int waterMl, String notes) {
+        super(userId, timestamp, notes);
         this.mealType = mealType;
         this.foodName = foodName;
         this.calories = calories;

@@ -5,6 +5,7 @@ import fitbit.exception.ValidationException;
 /**
  * Vital sign entity for cardiovascular and metabolic markers.
  * Extends HealthMetric (Inheritance & Polymorphism).
+ * Supports multi-user isolation.
  */
 public class Vital extends HealthMetric {
     private int heartRateBpm;
@@ -32,6 +33,19 @@ public class Vital extends HealthMetric {
     public Vital(String timestamp, int heartRateBpm, int restingHeartRateBpm, int systolicBp,
                  int diastolicBp, double spO2Percent, double bloodGlucoseMgDl, double bodyTempC, String notes) {
         super(timestamp, notes);
+        this.heartRateBpm = heartRateBpm;
+        this.restingHeartRateBpm = restingHeartRateBpm;
+        this.systolicBp = systolicBp;
+        this.diastolicBp = diastolicBp;
+        this.spO2Percent = spO2Percent;
+        this.bloodGlucoseMgDl = bloodGlucoseMgDl;
+        this.bodyTempC = bodyTempC;
+        evaluateCategories();
+    }
+
+    public Vital(String userId, String timestamp, int heartRateBpm, int restingHeartRateBpm, int systolicBp,
+                 int diastolicBp, double spO2Percent, double bloodGlucoseMgDl, double bodyTempC, String notes) {
+        super(userId, timestamp, notes);
         this.heartRateBpm = heartRateBpm;
         this.restingHeartRateBpm = restingHeartRateBpm;
         this.systolicBp = systolicBp;

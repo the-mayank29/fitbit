@@ -5,6 +5,7 @@ import fitbit.exception.ValidationException;
 /**
  * SleepSession entity for sleep architecture, hypnogram stages, and recovery scoring.
  * Extends HealthMetric (Inheritance & Polymorphism).
+ * Supports multi-user isolation.
  */
 public class SleepSession extends HealthMetric {
     private String sleepStart;
@@ -33,6 +34,19 @@ public class SleepSession extends HealthMetric {
     public SleepSession(String sleepStart, String sleepEnd, int deepMinutes, int lightMinutes,
                         int remMinutes, int awakeMinutes, String notes) {
         super(sleepStart, notes);
+        this.sleepStart = sleepStart;
+        this.sleepEnd = sleepEnd;
+        this.deepMinutes = deepMinutes;
+        this.lightMinutes = lightMinutes;
+        this.remMinutes = remMinutes;
+        this.awakeMinutes = awakeMinutes;
+        this.totalMinutes = deepMinutes + lightMinutes + remMinutes;
+        calculateSleepScore();
+    }
+
+    public SleepSession(String userId, String sleepStart, String sleepEnd, int deepMinutes, int lightMinutes,
+                        int remMinutes, int awakeMinutes, String notes) {
+        super(userId, sleepStart, notes);
         this.sleepStart = sleepStart;
         this.sleepEnd = sleepEnd;
         this.deepMinutes = deepMinutes;

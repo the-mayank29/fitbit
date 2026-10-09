@@ -5,6 +5,7 @@ import fitbit.exception.ValidationException;
 /**
  * Activity entity representing workouts and physical movement.
  * Extends HealthMetric (Inheritance & Polymorphism).
+ * Supports multi-user profiling.
  */
 public class Activity extends HealthMetric {
     private String name;
@@ -29,6 +30,20 @@ public class Activity extends HealthMetric {
     public Activity(String name, String type, String timestamp, double durationMinutes, double distanceKm,
                     int caloriesBurned, int steps, int avgHeartRate, String intensity, String notes) {
         super(timestamp, notes);
+        this.name = name;
+        this.type = type;
+        this.durationMinutes = durationMinutes;
+        this.distanceKm = distanceKm;
+        this.caloriesBurned = caloriesBurned;
+        this.steps = steps;
+        this.avgHeartRate = avgHeartRate;
+        this.maxHeartRate = avgHeartRate > 0 ? (int)(avgHeartRate * 1.25) : 0;
+        this.intensity = intensity;
+    }
+
+    public Activity(String userId, String name, String type, String timestamp, double durationMinutes, double distanceKm,
+                    int caloriesBurned, int steps, int avgHeartRate, String intensity, String notes) {
+        super(userId, timestamp, notes);
         this.name = name;
         this.type = type;
         this.durationMinutes = durationMinutes;

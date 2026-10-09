@@ -8,6 +8,7 @@ import java.util.List;
 /**
  * CycleLog entity for menstrual health, symptoms, mood, and cycle predictions.
  * Extends HealthMetric (Inheritance & Polymorphism).
+ * Supports multi-user isolation.
  */
 public class CycleLog extends HealthMetric {
     private String logDate;
@@ -41,6 +42,26 @@ public class CycleLog extends HealthMetric {
                     boolean isFertileWindow, boolean isOvulationDay, String predictedNextPeriod,
                     String predictedOvulationDate, String notes) {
         super(logDate, notes);
+        this.logDate = logDate;
+        this.cycleStartDate = cycleStartDate;
+        this.cycleDay = cycleDay;
+        this.phase = phase;
+        this.flow = flow;
+        this.symptoms = symptoms != null ? symptoms : new ArrayList<>();
+        this.mood = mood;
+        this.cervicalMucus = cervicalMucus;
+        this.basalBodyTempC = basalBodyTempC;
+        this.isFertileWindow = isFertileWindow;
+        this.isOvulationDay = isOvulationDay;
+        this.predictedNextPeriod = predictedNextPeriod;
+        this.predictedOvulationDate = predictedOvulationDate;
+    }
+
+    public CycleLog(String userId, String logDate, String cycleStartDate, int cycleDay, String phase, String flow,
+                    List<String> symptoms, String mood, String cervicalMucus, double basalBodyTempC,
+                    boolean isFertileWindow, boolean isOvulationDay, String predictedNextPeriod,
+                    String predictedOvulationDate, String notes) {
+        super(userId, logDate, notes);
         this.logDate = logDate;
         this.cycleStartDate = cycleStartDate;
         this.cycleDay = cycleDay;

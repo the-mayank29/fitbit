@@ -5,6 +5,7 @@ import fitbit.exception.ValidationException;
 /**
  * BodyMeasurement entity holding weight, height, body fat, and circumferences.
  * Extends HealthMetric (Inheritance & Polymorphism).
+ * Supports multi-user isolation.
  */
 public class BodyMeasurement extends HealthMetric {
     private double weightKg;
@@ -31,6 +32,22 @@ public class BodyMeasurement extends HealthMetric {
                            double muscleMassKg, double chestCm, double waistCm, double hipsCm,
                            double bicepsCm, double thighsCm, String notes) {
         super(timestamp, notes);
+        this.weightKg = weightKg;
+        this.heightCm = heightCm;
+        this.bodyFatPercent = bodyFatPercent;
+        this.muscleMassKg = muscleMassKg;
+        this.chestCm = chestCm;
+        this.waistCm = waistCm;
+        this.hipsCm = hipsCm;
+        this.bicepsCm = bicepsCm;
+        this.thighsCm = thighsCm;
+        recalculateMetrics();
+    }
+
+    public BodyMeasurement(String userId, String timestamp, double weightKg, double heightCm, double bodyFatPercent,
+                           double muscleMassKg, double chestCm, double waistCm, double hipsCm,
+                           double bicepsCm, double thighsCm, String notes) {
+        super(userId, timestamp, notes);
         this.weightKg = weightKg;
         this.heightCm = heightCm;
         this.bodyFatPercent = bodyFatPercent;

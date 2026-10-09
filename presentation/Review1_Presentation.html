@@ -557,42 +557,42 @@ public interface Repository&lt;T extends BaseEntity, ID&gt; {
     <!-- SLIDE 8: DATABASE DESIGN -->
     <div class="slide">
       <div class="slide-header">
-        <h1 class="slide-title">Database Design & Schema (3NF)</h1>
+        <h1 class="slide-title">Multi-User Database Design & 3NF Schema</h1>
         <span class="slide-tag">Relational Database</span>
       </div>
       <div class="slide-body">
         <p style="margin-bottom: 14px; color: var(--text-muted);">
-          Fully normalized Third Normal Form (3NF) relational SQLite schema in <code>data/schema.sql</code>:
+          Fully normalized Third Normal Form (3NF) relational SQLite schema with strict multi-user data segregation (<code>data/schema.sql</code>):
         </p>
         <div class="grid-3">
           <div class="card">
-            <div class="card-title">users (Master Table)</div>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Primary Key: <code>id</code>. Stores profile metrics, biometric baselines, and daily goals.</p>
+            <div class="card-title">users (Multi-User Accounts)</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Primary Key: <code>id</code>. Manages user accounts, unique emails, avatar colors, biometric baselines, and individual daily targets.</p>
           </div>
           <div class="card">
-            <div class="card-title">activities</div>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Duration, distance, calories, heart rate zones, intensity.</p>
+            <div class="card-title">activities (User Segregated)</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted);"><code>FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE</code>. Duration, distance, calories, heart rate zones, steps.</p>
           </div>
           <div class="card">
             <div class="card-title">body_measurements</div>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Weight, height, BMI, body fat %, waist, hips, biceps, thighs.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Weight, height, BMI, body fat %, waist, hips, biceps, thighs, waist-to-hip ratio.</p>
           </div>
           <div class="card">
-            <div class="card-title">vitals</div>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Heart rate, resting HR, BP systolic/diastolic, SpO2, glucose, temp.</p>
+            <div class="card-title">vitals & biometrics</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Heart rate, resting HR, BP systolic/diastolic, SpO2, glucose, temp, HR zones.</p>
           </div>
           <div class="card">
             <div class="card-title">nutrition_logs</div>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Meal type, calories, protein, carbs, fats, fiber, water (ml).</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Meal type, calories, protein, carbs, fats, fiber, water tracking.</p>
           </div>
           <div class="card">
             <div class="card-title">sleep_sessions & cycle_logs</div>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Hypnogram stages (Deep, Light, REM) and 4-phase cycle records.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">FK: <code>user_id</code>. Hypnogram sleep architecture stages and 4-phase menstrual cycle tracking with ovulation forecasts.</p>
           </div>
         </div>
       </div>
       <div class="slide-footer">
-        <span>SQLite Schema Design & Constraints</span>
+        <span>SQLite 3NF Schema & Multi-User Foreign Key Cascades</span>
         <span>Slide 8 / 11</span>
       </div>
     </div>

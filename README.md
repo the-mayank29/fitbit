@@ -24,17 +24,22 @@ A clean, modular health and fitness tracker inspired by **Google Fit**, built on
 
 ---
 
-## 🌟 Google Fit Minimal UI Features
+## 🌟 Google Fit Minimal UI & Multi-User Architecture
 
-1. **Iconic Concentric Activity Rings**:
-   - **Outer Blue Ring (`#1a73e8`)**: Move Minutes & Steps progress toward your daily target.
+1. **Multi-User Account Switcher & Profiles**:
+   - Store and manage multiple user profiles (`Alex Morgan`, `David Chen`, `Elena Rostova`, or any custom user).
+   - Dedicated User Switcher dropdown in the top header with active user avatar initial and color theme.
+   - One-click "+ Add User" modal to create new accounts with customized age, gender, height, target weight, and daily step/calorie/water goals.
+   - Strict data segregation: all 6 health domains are isolated per user via foreign key `user_id`.
+2. **Iconic Concentric Activity Rings**:
+   - **Outer Blue Ring (`#1a73e8`)**: Move Minutes & Steps progress toward each user's specific daily target.
    - **Inner Green Ring (`#00875a`)**: Heart Points earned from moderate-to-vigorous activities.
    - Real-time ring circumference stroke-dashoffset animation.
-2. **Speed-Dial Floating Action Button (FAB)**:
+3. **Speed-Dial Floating Action Button (FAB)**:
    - One-touch logging for Workouts, Body measurements, Vitals, Nutrition, Sleep, and Cycle.
-3. **Clean Journal Feed**:
+4. **Clean Journal Feed**:
    - Chronological, uncluttered history of workouts and metrics with instant delete and filter options.
-4. **Minimal Health Metric Cards**:
+5. **Minimal Health Metric Cards**:
    - Vitals (Heart rate, Blood Pressure, SpO2), Body weight & BMI, Sleep hypnogram, Nutrition & Hydration (+250ml tap), and Cycle tracking.
 
 ---

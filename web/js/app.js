@@ -8,6 +8,8 @@
 class FitbitApp {
   constructor() {
     this.state = {
+      users: [],
+      activeUserId: 'user_1',
       dashboard: null,
       activities: [],
       measurements: [],
@@ -25,7 +27,67 @@ class FitbitApp {
 
   async init() {
     this.bindEvents();
+    await this.loadUsers();
     await this.refreshAll();
+  }
+
+  // ==========================================
+  // MULTI-USER MANAGEMENT & SYNCHRONIZATION
+  // ==========================================
+  async loadUsers() {
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        this.state.users = data.users || [];
+        this.state.activeUserId = data.activeUserId || (this.state.users[0]?.id || 'user_1');
+        this.renderUserSelector();
+      }
+    } catch (err) {
+      console.error("Failed to load users:", err);
+    }
+  }
+
+  renderUserSelector() {
+    const sel = document.getElementById('userSelector');
+    if (!sel) return;
+    sel.innerHTML = this.state.users.map(u =>
+      `<option value="${u.id}">${escapeHtml(u.name)}</option>`
+    ).join('');
+    sel.value = this.state.activeUserId;
+
+    const activeUser = this.state.users.find(u => u.id === this.state.activeUserId);
+    if (activeUser) {
+      const avatarEl = document.getElementById('avatarInitial');
+      if (avatarEl) {
+        avatarEl.innerText = activeUser.name ? activeUser.name.charAt(0).toUpperCase() : 'U';
+        if (activeUser.avatarColor) {
+          avatarEl.style.backgroundColor = activeUser.avatarColor;
+        }
+      }
+    }
+  }
+
+  async switchUser(userId) {
+    if (!userId || userId === this.state.activeUserId) return;
+    try {
+      const res = await fetch(`/api/users/switch?id=${encodeURIComponent(userId)}`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        this.state.activeUserId = userId;
+        this.renderUserSelector();
+        await this.refreshAll();
+        const userName = data.activeUser?.name || "User";
+        this.showToast(`Switched account to ${userName}`, "info");
+      } else {
+        this.showToast("Failed to switch user account", "error");
+      }
+    } catch (err) {
+      console.error("Error switching user:", err);
+      this.showToast("Network error switching user", "error");
+    }
   }
 
   // ==========================================
@@ -63,6 +125,14 @@ class FitbitApp {
   // EVENT BINDINGS
   // ==========================================
   bindEvents() {
+    // User Switcher
+    const userSel = document.getElementById('userSelector');
+    if (userSel) {
+      userSel.addEventListener('change', async (e) => {
+        await this.switchUser(e.target.value);
+      });
+    }
+
     // Tab switching
     document.querySelectorAll('.gf-tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -79,6 +149,7 @@ class FitbitApp {
     document.getElementById('formSleep')?.addEventListener('submit', (e) => this.handleSleepSubmit(e));
     document.getElementById('formCycle')?.addEventListener('submit', (e) => this.handleCycleSubmit(e));
     document.getElementById('formProfile')?.addEventListener('submit', (e) => this.handleProfileSubmit(e));
+    document.getElementById('formCreateUser')?.addEventListener('submit', (e) => this.handleCreateUserSubmit(e));
   }
 
   toggleFab() {
@@ -122,9 +193,22 @@ class FitbitApp {
 
   renderHeader() {
     const prof = this.state.profile;
-    if (prof && prof.name) {
-      document.getElementById('userNameBadge').innerText = prof.name;
-      document.getElementById('avatarInitial').innerText = prof.name.charAt(0).toUpperCase();
+    if (prof) {
+      const avatarEl = document.getElementById('avatarInitial');
+      if (avatarEl) {
+        avatarEl.innerText = prof.name ? prof.name.charAt(0).toUpperCase() : 'U';
+        if (prof.avatarColor) {
+          avatarEl.style.backgroundColor = prof.avatarColor;
+        }
+      }
+      const badge = document.getElementById('userNameBadge');
+      if (badge && prof.name) {
+        badge.innerText = prof.name;
+      }
+      const userSel = document.getElementById('userSelector');
+      if (userSel && prof.id) {
+        userSel.value = prof.id;
+      }
     }
   }
 
@@ -408,6 +492,22 @@ class FitbitApp {
   // MODALS & QUICK ACTIONS
   // ==========================================
   openModal(modalId) {
+    if (modalId === 'modalProfile' && this.state.profile) {
+      const p = this.state.profile;
+      const f = document.getElementById('formProfile');
+      if (f) {
+        if (f.profName && p.name) f.profName.value = p.name;
+        if (f.profEmail && p.email) f.profEmail.value = p.email;
+        if (f.profAge && p.age) f.profAge.value = p.age;
+        if (f.profGender && p.gender) f.profGender.value = p.gender;
+        if (f.profHeight && p.heightCm) f.profHeight.value = p.heightCm;
+        if (f.profWeight && p.targetWeightKg) f.profWeight.value = p.targetWeightKg;
+        if (f.profSteps && p.dailyStepGoal) f.profSteps.value = p.dailyStepGoal;
+        if (f.profCalories && p.dailyCalorieGoal) f.profCalories.value = p.dailyCalorieGoal;
+        if (f.profWater && p.dailyWaterGoalMl) f.profWater.value = p.dailyWaterGoalMl;
+        if (f.profColor && p.avatarColor) f.profColor.value = p.avatarColor;
+      }
+    }
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.add('active');
   }
@@ -610,14 +710,16 @@ class FitbitApp {
     e.preventDefault();
     const form = e.target;
     const data = {
-      name: form.profName.value,
+      name: form.profName.value.trim(),
+      email: form.profEmail ? form.profEmail.value.trim() : "",
       age: parseInt(form.profAge.value),
       gender: form.profGender.value,
       heightCm: parseFloat(form.profHeight.value),
       targetWeightKg: parseFloat(form.profWeight.value),
       dailyStepGoal: parseInt(form.profSteps.value),
       dailyCalorieGoal: parseInt(form.profCalories.value),
-      dailyWaterGoalMl: parseInt(form.profWater.value)
+      dailyWaterGoalMl: parseInt(form.profWater.value),
+      avatarColor: form.profColor ? form.profColor.value : "#1a73e8"
     };
 
     const res = await fetch('/api/profile', {
@@ -629,7 +731,47 @@ class FitbitApp {
     if (res.ok) {
       this.closeModal('modalProfile');
       this.showToast("Profile updated");
+      await this.loadUsers();
       await this.refreshAll();
+    }
+  }
+
+  async handleCreateUserSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+      name: form.newUserName.value.trim(),
+      email: form.newUserEmail.value.trim(),
+      age: parseInt(form.newUserAge.value) || 28,
+      gender: form.newUserGender.value,
+      heightCm: parseFloat(form.newUserHeight.value) || 170.0,
+      targetWeightKg: parseFloat(form.newUserWeight.value) || 70.0,
+      dailyStepGoal: parseInt(form.newUserSteps.value) || 10000,
+      dailyCalorieGoal: parseInt(form.newUserCalories.value) || 650,
+      dailyWaterGoalMl: parseInt(form.newUserWater.value) || 2500,
+      avatarColor: form.newUserColor ? form.newUserColor.value : "#1a73e8"
+    };
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) {
+        const created = await res.json();
+        this.closeModal('modalCreateUser');
+        form.reset();
+        await this.loadUsers();
+        await this.switchUser(created.id);
+        this.showToast(`Account created for ${created.name}!`, "info");
+      } else {
+        this.showToast("Failed to create user account", "error");
+      }
+    } catch (err) {
+      console.error("Error creating user:", err);
+      this.showToast("Network error creating user", "error");
     }
   }
 
