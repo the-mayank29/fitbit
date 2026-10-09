@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fitbit 3D - Next-Gen Health & Fitness (Java 21)</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+  <!-- =========================================================================
+       TOP NAVIGATION BAR
+       ========================================================================= -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      </div>
+      <div>
+        <div class="brand-title">FITBIT 3D</div>
+        <div style="font-size:0.65rem; color:var(--text-muted); font-weight:600;">JAVA 21 BIOMETRIC ENGINE</div>
+      </div>
+      <span class="brand-badge">3D ACTIVE</span>
+    </div>
+
+    <nav class="nav-center">
+      <button class="nav-tab active" data-tab="overview">📊 Overview</button>
+      <button class="nav-tab" data-tab="activities">🏃 Activities</button>
+      <button class="nav-tab" data-tab="measurements">📐 Body & 3D</button>
+      <button class="nav-tab" data-tab="vitals">💓 Vitals</button>
+      <button class="nav-tab" data-tab="nutrition">🥗 Nutrition</button>
+      <button class="nav-tab" data-tab="sleep">🛌 Sleep</button>
+      <button class="nav-tab" data-tab="cycle">🌸 Cycle</button>
+    </nav>
+
+    <div class="nav-actions">
+      <div class="wellness-badge" title="Composite Wellness Score">
+        <div class="wellness-ring"></div>
+        <span>Score: <strong id="wellnessScoreVal">--</strong></span>
+      </div>
+      <button class="btn-secondary" id="userNameBadge" onclick="window.app.openModal('modalProfile')">Alex Morgan ⚙️</button>
+      <button class="btn-primary" onclick="window.app.openModal('modalActivity')">+ Log</button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       HERO 3D THEATER STAGE
+       ========================================================================= -->
+  <section class="hero-3d-container">
+    <!-- 3D Mode Selector -->
+    <div class="stage-top-bar">
+      <button class="mode-btn active" data-mode="body">🧍 3D Body Avatar</button>
+      <button class="mode-btn" data-mode="heart">❤️ 3D Beating Heart</button>
+      <button class="mode-btn" data-mode="rings">⭕ 3D Activity Rings</button>
+      <button class="mode-btn" data-mode="sleep">🌙 3D Sleep Orb</button>
+      <button class="mode-btn" data-mode="cycle">🌸 3D Cycle Disc</button>
+    </div>
+
+    <!-- WebGL Canvas -->
+    <canvas id="canvas3d"></canvas>
+
+    <!-- 3D Biometric HUD (Left) -->
+    <div class="stage-hud">
+      <div class="hud-pill">
+        <div>
+          <div class="hud-title">Today's Steps</div>
+          <div class="hud-value" id="hudSteps">--</div>
+        </div>
+      </div>
+      <div class="hud-pill rose">
+        <div>
+          <div class="hud-title">Heart Rate</div>
+          <div class="hud-value" id="hudBpm">--</div>
+        </div>
+      </div>
+      <div class="hud-pill emerald">
+        <div>
+          <div class="hud-title">Weight</div>
+          <div class="hud-value" id="hudWeight">--</div>
+        </div>
+      </div>
+      <div class="hud-pill violet">
+        <div>
+          <div class="hud-title">Cycle Phase</div>
+          <div class="hud-value" id="hudCycle">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Controls (Right) -->
+    <div class="stage-controls">
+      <button class="ctrl-btn" data-action="front" title="Front View">👁</button>
+      <button class="ctrl-btn" data-action="side" title="Side View">↔</button>
+      <button class="ctrl-btn" data-action="torso" title="Focus Torso">🎯</button>
+      <button class="ctrl-btn active" data-action="autorotate" title="Toggle Auto-Rotation">🔄</button>
+      <button class="ctrl-btn" data-action="reset" title="Reset Camera">⏮</button>
+    </div>
+
+    <!-- Floating Raycast Tooltip -->
+    <div id="hudTooltip"></div>
+  </section>
+
+  <!-- =========================================================================
+       MAIN DASHBOARD VIEWS
+       ========================================================================= -->
+  <main class="main-content">
+
+    <!-- 1. OVERVIEW TAB -->
+    <section id="view-overview" class="view-section active">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Today's Health Summary</h1>
+          <p class="section-sub">Synchronized real-time with Java 21 backend analytics</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-secondary" onclick="window.app.resetDemoData()">🔄 Reload Sample Data</button>
+        </div>
+      </div>
+
+      <!-- 4 Core Metric Cards -->
+      <div class="grid-4">
+        <!-- Steps Card -->
+        <div class="glass-panel stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Movement / Steps</span>
+            <div class="stat-icon cyan">👟</div>
+          </div>
+          <div class="stat-value" id="cardTodaySteps">0</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill cyan" id="cardStepProgress" style="width:0%"></div>
+          </div>
+          <div class="stat-footer">
+            <span id="cardStepGoal">Goal: 10,000</span>
+            <button class="action-btn" onclick="window.app.openModal('modalActivity')">+ Add</button>
+          </div>
+        </div>
+
+        <!-- Calories Burned -->
+        <div class="glass-panel stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Active Calories</span>
+            <div class="stat-icon rose">🔥</div>
+          </div>
+          <div class="stat-value" id="cardTodayCals">0 kcal</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill rose" id="cardCalProgress" style="width:0%"></div>
+          </div>
+          <div class="stat-footer">
+            <span id="cardCalGoal">Goal: 600 kcal</span>
+            <span style="color:var(--accent-rose)">Burned today</span>
+          </div>
+        </div>
+
+        <!-- Vitals Card -->
+        <div class="glass-panel stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Latest Vitals</span>
+            <div class="stat-icon emerald">💓</div>
+          </div>
+          <div class="stat-value" id="cardHeartRate">--</div>
+          <div style="margin: 8px 0; font-size:0.85rem; color:var(--text-muted);">
+            BP: <strong id="cardBloodPressure" style="color:#fff;">--</strong> • SpO2: <strong id="cardSpO2" style="color:var(--accent-cyan);">--</strong>
+          </div>
+          <div class="stat-footer">
+            <span class="badge badge-normal">Resting Optimal</span>
+            <button class="action-btn" onclick="window.app.openModal('modalVital')">+ Log</button>
+          </div>
+        </div>
+
+        <!-- Sleep Card -->
+        <div class="glass-panel stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Sleep Quality</span>
+            <div class="stat-icon violet">🌙</div>
+          </div>
+          <div class="stat-value" id="cardSleepScore">--</div>
+          <div style="margin: 8px 0; font-size:0.85rem; color:var(--text-muted);" id="cardSleepDuration">
+            --
+          </div>
+          <div class="stat-footer">
+            <span class="badge badge-purple">High REM Recovery</span>
+            <button class="action-btn" onclick="window.app.openModal('modalSleep')">+ Log</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nutrition & Cycle Row -->
+      <div class="grid-2">
+        <!-- Nutrition & Hydration Card -->
+        <div class="glass-panel table-card">
+          <div class="table-header-wrap">
+            <div>
+              <h2 style="font-size:1.1rem; font-weight:700;">🥗 Nutrition & Hydration</h2>
+              <p class="section-sub">Calories consumed: <strong id="cardNutrCals" style="color:#fff;">--</strong></p>
+            </div>
+            <button class="btn-secondary" onclick="window.app.openModal('modalNutrition')">+ Log Meal</button>
+          </div>
+          <!-- Hydration bar -->
+          <div class="hydration-widget">
+            <div class="water-bottle-icon">💧</div>
+            <div style="flex-grow:1;">
+              <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:700; margin-bottom:4px;">
+                <span>Water Intake</span>
+                <span id="cardWaterIntake" style="color:var(--accent-cyan);">0 ml</span>
+              </div>
+              <div class="progress-bar-bg" style="margin:0;">
+                <div class="progress-bar-fill cyan" id="cardWaterProgress" style="width:0%;"></div>
+              </div>
+            </div>
+            <div class="water-btn-group">
+              <button class="water-add-btn" onclick="window.app.quickAddWater(250)">+250ml</button>
+              <button class="water-add-btn" onclick="window.app.quickAddWater(500)">+500ml</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cycle Tracking Card -->
+        <div class="glass-panel table-card">
+          <div class="table-header-wrap">
+            <div>
+              <h2 style="font-size:1.1rem; font-weight:700;">🌸 Menstrual Cycle & Ovulation</h2>
+              <p class="section-sub" id="cardCyclePhase">--</p>
+            </div>
+            <button class="btn-secondary" onclick="window.app.openModal('modalCycle')">+ Log Cycle</button>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+            <div>
+              <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Fertility Status</div>
+              <div style="font-size:1.15rem; font-weight:800; color:var(--accent-amber);" id="cardCycleFertile">--</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Next Period</div>
+              <div style="font-size:1.15rem; font-weight:800; color:var(--accent-rose);" id="cardCycleNext">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid-2">
+        <div class="glass-panel table-card">
+          <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px;">📊 7-Day Steps Activity Trend</h3>
+          <div class="chart-box">
+            <canvas id="canvasStepsChart"></canvas>
+          </div>
+        </div>
+        <div class="glass-panel table-card">
+          <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px;">📈 Weight & Body Mass Trend (kg)</h3>
+          <div class="chart-box">
+            <canvas id="canvasWeightChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ACTIVITIES TAB -->
+    <section id="view-activities" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Workouts & Activity Logs</h1>
+          <p class="section-sub">Track runs, cycling, strength training, yoga, and HIIT</p>
+        </div>
+        <button class="btn-primary" onclick="window.app.openModal('modalActivity')">+ Log Workout</button>
+      </div>
+
+      <div class="glass-panel table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Activity Name</th>
+              <th>Type</th>
+              <th>Duration</th>
+              <th>Distance</th>
+              <th>Calories</th>
+              <th>Intensity</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="activitiesTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. BODY MEASUREMENTS TAB -->
+    <section id="view-measurements" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Body Measurements & 3D Avatar</h1>
+          <p class="section-sub">Weight, BMI, body fat percentage, and tape circumference measurements</p>
+        </div>
+        <button class="btn-primary" onclick="window.app.openModal('modalMeasurement')">+ Log Measurement</button>
+      </div>
+
+      <div class="grid-4">
+        <div class="glass-panel stat-card">
+          <span class="stat-label">Current Weight</span>
+          <div class="stat-value" id="bmLatestWeight">--</div>
+          <div class="stat-footer"><span>Target: 60.0 kg</span></div>
+        </div>
+        <div class="glass-panel stat-card">
+          <span class="stat-label">Body Mass Index (BMI)</span>
+          <div class="stat-value" id="bmLatestBmi">--</div>
+          <div class="stat-footer"><span>Healthy Range: 18.5 - 24.9</span></div>
+        </div>
+        <div class="glass-panel stat-card">
+          <span class="stat-label">Body Fat %</span>
+          <div class="stat-value" id="bmLatestFat">--</div>
+          <div class="stat-footer"><span>Fitness athlete range</span></div>
+        </div>
+        <div class="glass-panel stat-card">
+          <span class="stat-label">Waist-To-Hip Ratio</span>
+          <div class="stat-value" id="bmLatestWhr">--</div>
+          <div class="stat-footer"><span class="badge badge-normal">Low Risk (&lt;0.85)</span></div>
+        </div>
+      </div>
+
+      <div class="glass-panel table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Weight</th>
+              <th>Height</th>
+              <th>BMI</th>
+              <th>Body Fat</th>
+              <th>Waist</th>
+              <th>Hips</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="measurementsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4. VITALS TAB -->
+    <section id="view-vitals" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Vitals & Biometrics</h1>
+          <p class="section-sub">Heart rate BPM, blood pressure, oxygen saturation, glucose and temperature</p>
+        </div>
+        <button class="btn-primary" onclick="window.app.openModal('modalVital')">+ Log Vitals</button>
+      </div>
+
+      <div class="glass-panel table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Heart Rate</th>
+              <th>Resting HR</th>
+              <th>Blood Pressure</th>
+              <th>SpO2</th>
+              <th>Glucose</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="vitalsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 5. NUTRITION TAB -->
+    <section id="view-nutrition" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Nutrition & Meal Diary</h1>
+          <p class="section-sub">Log meals, macronutrients (protein, carbs, fats) and track water intake</p>
+        </div>
+        <button class="btn-primary" onclick="window.app.openModal('modalNutrition')">+ Log Meal</button>
+      </div>
+
+      <div class="glass-panel table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Meal</th>
+              <th>Food Item</th>
+              <th>Calories</th>
+              <th>Protein</th>
+              <th>Carbs</th>
+              <th>Fat</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="nutritionTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6. SLEEP TAB -->
+    <section id="view-sleep" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Sleep Architecture & Stages</h1>
+          <p class="section-sub">Deep sleep, light sleep, REM cycles, efficiency and recovery scoring</p>
+        </div>
+        <button class="btn-primary" onclick="window.app.openModal('modalSleep')">+ Log Sleep</button>
+      </div>
+
+      <!-- Sleep Hypnogram Canvas -->
+      <div class="glass-panel table-card" style="margin-bottom:24px;">
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:8px;">🌙 Hypnogram Sleep Stage Breakdown</h3>
+        <div class="chart-box" style="height:110px;">
+          <canvas id="canvasHypnogram"></canvas>
+        </div>
+      </div>
+
+      <div class="glass-panel table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Total Duration</th>
+              <th>Sleep Score</th>
+              <th>Deep Sleep</th>
+              <th>REM Sleep</th>
+              <th>Efficiency</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sleepTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 7. CYCLE TRACKING TAB -->
+    <section id="view-cycle" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Menstrual Cycle & Fertility Tracking</h1>
+          <p class="section-sub">Phase forecasting, ovulation window, flow intensity, symptoms and mood log</p>
+        </div>
+        <button class="btn-primary" onclick="window.app.openModal('modalCycle')">+ Log Cycle</button>
+      </div>
+
+      <div class="glass-panel cycle-phase-wheel-card" style="margin-bottom:24px;">
+        <div style="font-size:3rem;">🌸</div>
+        <div>
+          <div id="cyclePhasePill" class="phase-pill phase-follicular">FOLLICULAR</div>
+          <h2 style="font-size:1.4rem; font-weight:800;" id="cycleCurrentDay">Day 11</h2>
+          <div style="font-size:1rem; color:var(--text-muted); margin-bottom:6px;" id="cyclePhaseName">Follicular Phase</div>
+          <p style="font-size:0.9rem; color:var(--text-sub);" id="cycleFocusAdvice">Focus on strength training and creative energy.</p>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:24px; text-align:right;">
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Fertility Status</div>
+            <div style="font-size:1.15rem; font-weight:800; color:var(--accent-amber);" id="cycleFertilityStatus">✨ Fertile Window</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Days To Next Period</div>
+            <div style="font-size:1.15rem; font-weight:800; color:var(--accent-rose);" id="cycleNextPeriodDays">17 Days</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-panel table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Cycle Day</th>
+              <th>Phase</th>
+              <th>Flow</th>
+              <th>Symptoms</th>
+              <th>Mood</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="cycleTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================================
+       MODAL FORMS
+       ========================================================================= -->
+
+  <!-- 1. Modal: Log Activity -->
+  <div class="modal-backdrop" id="modalActivity">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">🏃 Log Workout Activity</h3>
+        <button class="modal-close" onclick="window.app.closeModal('modalActivity')">&times;</button>
+      </div>
+      <form id="formActivity" class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Activity Name</label>
+          <input type="text" name="actName" class="form-input" placeholder="e.g. Morning 5k Run" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Activity Type</label>
+            <select name="actType" class="form-select">
+              <option value="RUNNING">Running</option>
+              <option value="WALKING">Walking</option>
+              <option value="CYCLING">Cycling</option>
+              <option value="SWIMMING">Swimming</option>
+              <option value="STRENGTH">Strength Training</option>
+              <option value="YOGA">Yoga</option>
+              <option value="HIIT">HIIT</option>
+              <option value="PILATES">Pilates</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Duration (Minutes)</label>
+            <input type="number" name="actDuration" class="form-input" min="1" value="30" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Distance (km, optional)</label>
+            <input type="number" step="0.1" name="actDistance" class="form-input" placeholder="e.g. 5.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Calories Burned</label>
+            <input type="number" name="actCalories" class="form-input" value="250" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Steps (optional)</label>
+            <input type="number" name="actSteps" class="form-input" placeholder="e.g. 4000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Avg Heart Rate (BPM)</label>
+            <input type="number" name="actHr" class="form-input" placeholder="e.g. 140">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Intensity</label>
+          <select name="actIntensity" class="form-select">
+            <option value="LOW">Low</option>
+            <option value="MODERATE" selected>Moderate</option>
+            <option value="HIGH">High</option>
+            <option value="EXTREME">Extreme</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="actNotes" class="form-textarea" rows="2" placeholder="How did the session feel?"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="window.app.closeModal('modalActivity')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Activity</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Modal: Log Body Measurement -->
+  <div class="modal-backdrop" id="modalMeasurement">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">📐 Log Body Measurements</h3>
+        <button class="modal-close" onclick="window.app.closeModal('modalMeasurement')">&times;</button>
+      </div>
+      <form id="formMeasurement" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Weight (kg)</label>
+            <input type="number" step="0.1" name="bmWeight" class="form-input" value="62.4" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Height (cm)</label>
+            <input type="number" step="0.5" name="bmHeight" class="form-input" value="168.0" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Body Fat %</label>
+            <input type="number" step="0.1" name="bmBodyFat" class="form-input" value="21.9">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Muscle Mass (kg)</label>
+            <input type="number" step="0.1" name="bmMuscle" class="form-input" value="46.8">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Chest (cm)</label>
+            <input type="number" step="0.5" name="bmChest" class="form-input" value="87.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Waist (cm)</label>
+            <input type="number" step="0.5" name="bmWaist" class="form-input" value="69.8">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Hips (cm)</label>
+            <input type="number" step="0.5" name="bmHips" class="form-input" value="95.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Biceps (cm)</label>
+            <input type="number" step="0.5" name="bmBiceps" class="form-input" value="28.0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Thighs (cm)</label>
+          <input type="number" step="0.5" name="bmThighs" class="form-input" value="53.2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="inputMeasNotes" name="bmNotes" class="form-textarea" rows="2" placeholder="Notes..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="window.app.closeModal('modalMeasurement')">Cancel</button>
+          <button type="submit" class="btn-primary">Update Body & 3D Avatar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Modal: Log Vitals -->
+  <div class="modal-backdrop" id="modalVital">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">💓 Record Vitals</h3>
+        <button class="modal-close" onclick="window.app.closeModal('modalVital')">&times;</button>
+      </div>
+      <form id="formVital" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Heart Rate (BPM)</label>
+            <input type="number" name="vitHr" class="form-input" value="68" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Resting HR (BPM)</label>
+            <input type="number" name="vitRestingHr" class="form-input" value="60">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Systolic BP (mmHg)</label>
+            <input type="number" name="vitSystolic" class="form-input" value="116">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Diastolic BP (mmHg)</label>
+            <input type="number" name="vitDiastolic" class="form-input" value="75">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Blood Oxygen SpO2 (%)</label>
+            <input type="number" step="0.1" name="vitSpO2" class="form-input" value="99.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Glucose (mg/dL)</label>
+            <input type="number" step="0.1" name="vitGlucose" class="form-input" value="92.0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body Temperature (°C)</label>
+          <input type="number" step="0.1" name="vitTemp" class="form-input" value="36.6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="vitNotes" class="form-textarea" rows="2" placeholder="e.g. Post-workout measurement"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="window.app.closeModal('modalVital')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Vitals</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Modal: Log Nutrition -->
+  <div class="modal-backdrop" id="modalNutrition">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">🥗 Log Meal & Nutrition</h3>
+        <button class="modal-close" onclick="window.app.closeModal('modalNutrition')">&times;</button>
+      </div>
+      <form id="formNutrition" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Meal Type</label>
+            <select name="nutrMealType" class="form-select">
+              <option value="BREAKFAST">Breakfast</option>
+              <option value="LUNCH">Lunch</option>
+              <option value="DINNER">Dinner</option>
+              <option value="SNACK">Snack</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Calories (kcal)</label>
+            <input type="number" name="nutrCals" class="form-input" value="450" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Food Description</label>
+          <input type="text" name="nutrFood" class="form-input" placeholder="e.g. Grilled Chicken & Quinoa Bowl" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Protein (g)</label>
+            <input type="number" step="0.1" name="nutrProtein" class="form-input" value="35.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Carbohydrates (g)</label>
+            <input type="number" step="0.1" name="nutrCarbs" class="form-input" value="45.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fat (g)</label>
+            <input type="number" step="0.1" name="nutrFat" class="form-input" value="12.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Water with meal (ml)</label>
+            <input type="number" name="nutrWater" class="form-input" value="300">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="nutrNotes" class="form-textarea" rows="2" placeholder="Healthy meal notes..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="window.app.closeModal('modalNutrition')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Nutrition</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Modal: Log Sleep -->
+  <div class="modal-backdrop" id="modalSleep">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">🛌 Record Sleep Session</h3>
+        <button class="modal-close" onclick="window.app.closeModal('modalSleep')">&times;</button>
+      </div>
+      <form id="formSleep" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Bedtime</label>
+            <input type="datetime-local" name="slpStart" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Wake Time</label>
+            <input type="datetime-local" name="slpEnd" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Deep Sleep (mins)</label>
+            <input type="number" name="slpDeep" class="form-input" value="110" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Light Sleep (mins)</label>
+            <input type="number" name="slpLight" class="form-input" value="250" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">REM Sleep (mins)</label>
+            <input type="number" name="slpRem" class="form-input" value="105" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Awake Time (mins)</label>
+            <input type="number" name="slpAwake" class="form-input" value="15" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="slpNotes" class="form-textarea" rows="2" placeholder="e.g. Woke feeling well rested"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="window.app.closeModal('modalSleep')">Cancel</button>
+          <button type="submit" class="btn-primary">Calculate & Save Sleep</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Modal: Log Cycle -->
+  <div class="modal-backdrop" id="modalCycle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">🌸 Log Menstrual Cycle & Symptoms</h3>
+        <button class="modal-close" onclick="window.app.closeModal('modalCycle')">&times;</button>
+      </div>
+      <form id="formCycle" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Log Date</label>
+            <input type="date" name="cycDate" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cycle Day</label>
+            <input type="number" name="cycDay" class="form-input" value="11" min="1" max="45" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Flow</label>
+            <select name="cycFlow" class="form-select">
+              <option value="NONE" selected>None</option>
+              <option value="SPOTTING">Spotting</option>
+              <option value="LIGHT">Light</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HEAVY">Heavy</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mood</label>
+            <select name="cycMood" class="form-select">
+              <option value="Happy" selected>Happy</option>
+              <option value="Energetic">Energetic</option>
+              <option value="Calm">Calm</option>
+              <option value="Moody">Moody</option>
+              <option value="Irritable">Irritable</option>
+              <option value="Anxious">Anxious</option>
+              <option value="Low Energy">Low Energy</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Basal Body Temperature (°C)</label>
+          <input type="number" step="0.1" name="cycTemp" class="form-input" value="36.6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Select Symptoms</label>
+          <div class="symptom-tag-cloud">
+            <span class="symptom-tag" data-symptom="Cramps">Cramps</span>
+            <span class="symptom-tag" data-symptom="Headache">Headache</span>
+            <span class="symptom-tag" data-symptom="Bloating">Bloating</span>
+            <span class="symptom-tag" data-symptom="Fatigue">Fatigue</span>
+            <span class="symptom-tag" data-symptom="Acne">Acne</span>
+            <span class="symptom-tag" data-symptom="Tender Breasts">Tender Breasts</span>
+            <span class="symptom-tag" data-symptom="Cravings">Cravings</span>
+            <span class="symptom-tag" data-symptom="High Energy">High Energy</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="cycNotes" class="form-textarea" rows="2" placeholder="Cycle notes..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="window.app.closeModal('modalCycle')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Cycle Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. Modal: User Profile & Goals Settings -->
+  <div class="modal-backdrop" id="modalProfile">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ User Profile & Fitness Goals</h3>
+        <button class="modal-close" onclick="window.app.closeModal('modalProfile')">&times;</button>
+      </div>
+      <form id="formProfile" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="profName" class="form-input" value="Alex Morgan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Age</label>
+            <input type="number" name="profAge" class="form-input" value="28" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select name="profGender" class="form-select">
+              <option value="FEMALE" selected>Female</option>
+              <option value="MALE">Male</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Height (cm)</label>
+            <input type="number" step="0.1" name="profHeight" class="form-input" value="168.0" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Target Weight (kg)</label>
+            <input type="number" step="0.1" name="profWeight" class="form-input" value="60.0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Daily Step Goal</label>
+            <input type="number" name="profSteps" class="form-input" value="10000" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Daily Burn Goal (kcal)</label>
+            <input type="number" name="profCalories" class="form-input" value="600" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Daily Water Goal (ml)</label>
+            <input type="number" name="profWater" class="form-input" value="2500" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Cycle Length (Days)</label>
+            <input type="number" name="profCycleLength" class="form-input" value="28" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Period Length (Days)</label>
+            <input type="number" name="profPeriodLength" class="form-input" value="5" required>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="window.app.closeModal('modalProfile')">Cancel</button>
+          <button type="submit" class="btn-primary">Update Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="js/engine3d.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
